@@ -6,8 +6,8 @@
 <title>CountyZone Pro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <style>
   :root {
     --bg: #0a0f1a; --panel: #111827; --panel2: #1a2235; --border: #1e2d45;
@@ -43,10 +43,8 @@
 
   /* ── SIDEBAR ── */
   aside { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.3s; }
-  aside.collapsed { transform: translateX(-100%); position: absolute; z-index: 500; height: calc(100vh - 56px); top: 56px; }
   .sidebar-section { padding: 13px 15px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .section-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
-
   select, input[type="text"] { width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-family: var(--font-sans); font-size: 13px; outline: none; transition: border-color 0.15s; margin-bottom: 6px; }
   select:focus, input:focus { border-color: var(--accent); }
   select option { background: #1a2235; }
@@ -69,7 +67,6 @@
   .cancel-btn:hover { background: rgba(255,107,53,0.1); }
   .help-tip { font-size: 11px; color: var(--muted); font-family: var(--font-mono); line-height: 1.6; margin-top: 5px; }
 
-  /* zone save/load row */
   .zone-file-row { display: flex; gap: 6px; margin-top: 8px; }
   .zone-file-row .btn { flex: 1; text-align: center; font-size: 10px; padding: 6px 4px; }
 
@@ -85,16 +82,21 @@
   .empty-state { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 10px; line-height: 1.8; font-family: var(--font-mono); }
 
   /* ── MAP ── */
-  #map { width: 100%; height: 100%; background: #e8e0d8; }
   .map-wrap { position: relative; overflow: hidden; }
-  #drawHint { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.92); border: 1px solid var(--accent); color: var(--accent); font-family: var(--font-mono); font-size: 12px; padding: 10px 18px; border-radius: 8px; z-index: 1000; display: none; pointer-events: none; white-space: nowrap; }
-
-  /* sidebar toggle button (mobile) */
+  #map { width: 100%; height: 100%; }
+  #drawHint { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.92); border: 1px solid var(--accent); color: var(--accent); font-family: var(--font-mono); font-size: 12px; padding: 10px 18px; border-radius: 8px; z-index: 10; display: none; pointer-events: none; white-space: nowrap; }
+  #styleSelect { position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: 2px solid rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 12px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); outline: none; color: #333; min-width: 130px; margin: 0; }
+  #styleSelect:hover { border-color: rgba(0,0,0,0.5); }
   #sidebarToggle { display: none; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 16px; cursor: pointer; }
-
-  /* share banner */
-  #shareBanner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.95); border: 1px solid var(--green); color: var(--green); font-family: var(--font-mono); font-size: 11px; padding: 10px 16px; border-radius: 8px; z-index: 1000; display: none; max-width: 90%; text-align: center; cursor: pointer; }
+  #shareBanner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.95); border: 1px solid var(--green); color: var(--green); font-family: var(--font-mono); font-size: 11px; padding: 10px 16px; border-radius: 8px; z-index: 10; display: none; max-width: 90%; text-align: center; cursor: pointer; }
   #shareBanner:hover { background: rgba(0,255,136,0.08); }
+
+  /* Zone labels */
+  .zone-label { background: rgba(10,15,26,0.88); border: 1px solid #1e2d45; color: #e8f0fe; font-family: 'Space Mono', monospace; font-size: 11px; padding: 3px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+
+  /* Rectangle corner handles */
+  .rect-handle { width: 12px; height: 12px; background: #fff; border: 2px solid #00e5ff; border-radius: 3px; cursor: grab; box-shadow: 0 1px 4px rgba(0,0,0,0.5); transition: background 0.1s; }
+  .rect-handle:hover, .rect-handle:active { background: #00e5ff; cursor: grabbing; }
 
   /* ── MODALS ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -116,27 +118,9 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .leaflet-container { background: #e8e0d8 !important; }
-  .tile-toggle select {
-    background: white;
-    border: 2px solid rgba(0,0,0,0.3);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    outline: none;
-    color: #333;
-    min-width: 130px;
-  }
-  .tile-toggle select:hover { border-color: rgba(0,0,0,0.5); }
-  .leaflet-bar a { background: var(--panel) !important; color: var(--text) !important; border-color: var(--border) !important; }
-  .leaflet-bar a:hover { background: var(--panel2) !important; }
-  .poly-tooltip { background: rgba(10,15,26,0.88) !important; border: 1px solid #1e2d45 !important; color: #e8f0fe !important; font-family: 'Space Mono', monospace !important; font-size: 11px !important; padding: 3px 8px !important; border-radius: 4px !important; box-shadow: none !important; }
-  .poly-tooltip::before { display: none !important; }
+  .mapboxgl-ctrl-attrib { font-size: 10px !important; }
+  .mapboxgl-popup-content { padding: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .mapboxgl-popup-tip { display: none !important; }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 700px) {
@@ -166,47 +150,33 @@
 </header>
 
 <aside id="sidebar">
-  <!-- Location -->
   <div class="sidebar-section">
     <div class="section-label">Location</div>
-    <select id="stateSelect" onchange="loadCounties()">
-      <option value="">— Select State —</option>
-    </select>
-    <select id="countySelect" onchange="loadCounty()">
-      <option value="">— Select County —</option>
-    </select>
+    <select id="stateSelect" onchange="loadCounties()"><option value="">— Select State —</option></select>
+    <select id="countySelect" onchange="loadCounty()"><option value="">— Select County —</option></select>
   </div>
 
-  <!-- Stats -->
   <div class="stats-bar" style="border-bottom:1px solid var(--border)">
     <div class="stat"><div class="stat-val" id="statPolygons">0</div><div class="stat-label">Zones</div></div>
     <div class="stat"><div class="stat-val" id="statProps">0</div><div class="stat-label">Props</div></div>
     <div class="stat"><div class="stat-val" id="statAssigned">0</div><div class="stat-label">Assigned</div></div>
   </div>
 
-  <!-- Draw -->
   <div class="sidebar-section">
     <div class="section-label">Draw Zones</div>
-    <button class="draw-btn" id="btnPolygon" onclick="startDraw('polygon')">
-      <span style="font-size:14px">⬡</span> Freeform Polygon
-    </button>
-    <button class="draw-btn" id="btnRectangle" onclick="startDraw('rectangle')">
-      <span style="font-size:14px">⬜</span> Rectangle
-    </button>
+    <button class="draw-btn" id="btnPolygon" onclick="startDraw('polygon')"><span style="font-size:14px">⬡</span> Freeform Polygon</button>
+    <button class="draw-btn" id="btnRectangle" onclick="startDraw('rectangle')"><span style="font-size:14px">⬜</span> Rectangle</button>
     <button class="cancel-btn" id="btnCancel" onclick="cancelDraw()">✕ Cancel Drawing</button>
     <div class="help-tip" id="drawHelp">Select a mode above, then draw on the map.</div>
     <div class="section-label" style="margin-top:10px">Zone Color</div>
     <div class="color-row" id="colorRow"></div>
-
-    <!-- Save / Load zones file -->
     <div class="zone-file-row">
-      <button class="btn btn-warning" onclick="saveZonesFile()" title="Download zones as a file">💾 Save Zones</button>
-      <button class="btn btn-ghost" onclick="loadZonesFile()" title="Load a previously saved zones file">📂 Load Zones</button>
+      <button class="btn btn-warning" onclick="saveZonesFile()">💾 Save Zones</button>
+      <button class="btn btn-ghost" onclick="loadZonesFile()">📂 Load Zones</button>
     </div>
     <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
   </div>
 
-  <!-- Zones list -->
   <div style="padding:9px 14px 0; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0;">
     <span class="section-label" style="margin:0">Saved Zones</span>
     <span style="background:rgba(0,229,255,0.1);color:var(--accent);font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:4px" id="zoneCount">0</span>
@@ -219,6 +189,7 @@
 
 <div class="map-wrap">
   <div id="map"></div>
+  <select id="styleSelect" onchange="changeMapStyle(this.value)" title="Switch map style"></select>
   <div id="drawHint"></div>
   <div id="shareBanner" onclick="copyShareURL()">🔗 Click to copy shareable link with your current zones</div>
 </div>
@@ -231,22 +202,14 @@
     <label>SPREADSHEET ID</label>
     <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
     <div class="gs-help">From your URL: docs.google.com/spreadsheets/d/<strong>[THIS PART]</strong>/edit</div>
-    <label>SHEET TAB NAME</label>
-    <input type="text" id="sheetName" value="Sheet1">
-    <label>LATITUDE COLUMN</label>
-    <input type="text" id="colLat" value="latitude">
-    <label>LONGITUDE COLUMN</label>
-    <input type="text" id="colLng" value="longitude">
-    <label>PROPERTY ID COLUMN (APN)</label>
-    <input type="text" id="colAPN" value="APN">
-    <label>CITY COLUMN</label>
-    <input type="text" id="colCity" value="city">
-    <label>STATE COLUMN</label>
-    <input type="text" id="colState" value="state">
-    <label>ZIP COLUMN</label>
-    <input type="text" id="colZip" value="zip">
-    <label>OUTPUT ZONE COLUMN NAME</label>
-    <input type="text" id="colZone" value="Zone">
+    <label>SHEET TAB NAME</label><input type="text" id="sheetName" value="Sheet1">
+    <label>LATITUDE COLUMN</label><input type="text" id="colLat" value="latitude">
+    <label>LONGITUDE COLUMN</label><input type="text" id="colLng" value="longitude">
+    <label>PROPERTY ID COLUMN (APN)</label><input type="text" id="colAPN" value="APN">
+    <label>CITY COLUMN</label><input type="text" id="colCity" value="city">
+    <label>STATE COLUMN</label><input type="text" id="colState" value="state">
+    <label>ZIP COLUMN</label><input type="text" id="colZip" value="zip">
+    <label>OUTPUT ZONE COLUMN NAME</label><input type="text" id="colZone" value="Zone">
     <div class="modal-actions">
       <button class="btn btn-danger" onclick="closeSheetsModal()">CANCEL</button>
       <button class="btn btn-primary" onclick="connectSheets()">CONNECT & LOAD</button>
@@ -272,233 +235,216 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// STATE
+// CONFIG & STATE
 // ═══════════════════════════════════════════════════════════
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3luZXJneWxhbmRncm91cCIsImEiOiJjbW02MjI5dTEwY2xtMnFuMGs2Y3Y2OWlwIn0.O7gX97oTNFUw9HooOheq6w';
+mapboxgl.accessToken = MAPBOX_TOKEN;
+
 const COLORS = ['#00e5ff','#ff6b35','#00ff88','#f7c948','#c084fc','#fb7185','#38bdf8','#a3e635'];
 let selectedColor = COLORS[0];
-let polygons = [];      // {id, name, color, layer, points}
-let properties = [];    // loaded from sheet
+
+// polygons[i]: { id, name, color, points[[lng,lat],...], labelMarker, handles[], _isRect, _bounds }
+let polygons = [];
+// properties[i]: { row, headers, lat, lng, apn, city, state, zip, marker(mapboxgl.Marker), zone }
+let properties = [];
 let sheetConfig = {};
-let countyLayer = null;
-let editingPolyId = null;
-let pendingPts = null, pendingColor = null;
+let countySourceId = null;
 
-// Drawing
-let drawMode = null;
-let drawPoints = [];
-let drawPolyline = null;
-let drawPreview = null;
-let rectStart = null;
+// ── Draw state ──────────────────────────────────────────────
+let drawMode   = null;   // null | 'polygon' | 'rectangle'
+let polyState  = 'idle'; // 'idle' | 'drawing'
+let drawPoints = [];     // [[lng,lat], ...]
+let rectStart  = null;   // [lng, lat]
 let isDragging = false;
+let _pendingRectBounds = null;
+
+// Modal handoff
+let pendingPts = null, pendingColor = null, editingPolyId = null;
+
+// ── Mapbox GL source/layer IDs for live drawing previews ──
+const SRC_FILL    = '__draw_fill';
+const SRC_LINE    = '__draw_line';
+const SRC_PREVIEW = '__draw_preview';
+const SRC_VERTS   = '__draw_verts';
 
 // ═══════════════════════════════════════════════════════════
-// MAP
+// MAP STYLES
 // ═══════════════════════════════════════════════════════════
-const map = L.map('map', {
-  zoomControl: true,
-  doubleClickZoom: false,
-  scrollWheelZoom: true,
-  touchZoom: true,
-  dragging: true,
-  keyboard: true,
-}).setView([39.5, -98.35], 4);
-// ── MAP TILE LAYERS (Mapbox) ─────────────────────────────
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3luZXJneWxhbmRncm91cCIsImEiOiJjbW02MjI5dTEwY2xtMnFuMGs2Y3Y2OWlwIn0.O7gX97oTNFUw9HooOheq6w';
-const MAPBOX_ATTR = '© <a href="https://www.mapbox.com/">Mapbox</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a>';
-
-const tileStyles = [
-  { id: 'streets-v12',           label: '🗺 Streets'   },
-  { id: 'outdoors-v12',          label: '🌲 Outdoors'  },
-  { id: 'satellite-v9',          label: '🛰 Satellite' },
-  { id: 'satellite-streets-v12', label: '🛰 Hybrid'    },
-  { id: 'light-v11',             label: '☁️ Light'     },
-  { id: 'dark-v11',              label: '🌙 Dark'      },
+const MAP_STYLES = [
+  { id: 'mapbox://styles/mapbox/streets-v12',           label: '🗺 Streets'   },
+  { id: 'mapbox://styles/mapbox/outdoors-v12',          label: '🌲 Outdoors'  },
+  { id: 'mapbox://styles/mapbox/satellite-v9',          label: '🛰 Satellite' },
+  { id: 'mapbox://styles/mapbox/satellite-streets-v12', label: '🛰 Hybrid'    },
+  { id: 'mapbox://styles/mapbox/light-v11',             label: '☁️ Light'     },
+  { id: 'mapbox://styles/mapbox/dark-v11',              label: '🌙 Dark'      },
 ];
+const styleEl = document.getElementById('styleSelect');
+MAP_STYLES.forEach((s, i) => {
+  const o = document.createElement('option'); o.value = i; o.textContent = s.label;
+  styleEl.appendChild(o);
+});
 
-function mbUrl(styleId) {
-  return `https://api.mapbox.com/styles/v1/mapbox/${styleId}/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`;
-}
+// ═══════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: MAP_STYLES[0].id,
+  center: [-98.35, 39.5],
+  zoom: 4,
+  doubleClickZoom: false,
+  boxZoom: false,
+});
+map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120 }), 'bottom-left');
 
-function makeTileLayer(styleId) {
-  return L.tileLayer(mbUrl(styleId), {
-    attribution: MAPBOX_ATTR,
-    tileSize: 256,
-    maxZoom: 22
-  });
-}
-
-let currentStyleIdx = 0;
-let currentTileLayer = makeTileLayer(tileStyles[0].id);
-currentTileLayer.addTo(map);
-
-// Map style dropdown control
-const tileToggle = L.control({ position: 'topright' });
-tileToggle.onAdd = function() {
-  const div = L.DomUtil.create('div', 'tile-toggle');
-  const options = tileStyles.map((s, i) =>
-    `<option value="${i}">${s.label}</option>`
-  ).join('');
-  div.innerHTML = `
-    <select id="tileSelect" onchange="changeMapStyle(this.value)" title="Switch map style">
-      ${options}
-    </select>`;
-  L.DomEvent.disableClickPropagation(div);
-  L.DomEvent.disableScrollPropagation(div);
-  return div;
-};
-tileToggle.addTo(map);
+// Re-add all sources/layers every time style is swapped
+map.on('style.load', () => {
+  _initDrawLayers();
+  _restoreAllZoneLayers();
+  countySourceId = null; // county layers are lost on style swap; user must reload
+});
 
 function changeMapStyle(idx) {
-  currentStyleIdx = parseInt(idx);
-  const style = tileStyles[currentStyleIdx];
-  map.removeLayer(currentTileLayer);
-  currentTileLayer = makeTileLayer(style.id);
-  currentTileLayer.addTo(map);
-  if (countyLayer) countyLayer.bringToFront();
-}
-
-// Keep cycleMapStyle for backwards compat
-function cycleMapStyle() {
-  changeMapStyle((currentStyleIdx + 1) % tileStyles.length);
-  document.getElementById('tileSelect').value = currentStyleIdx;
+  map.setStyle(MAP_STYLES[parseInt(idx)].id);
 }
 
 // ═══════════════════════════════════════════════════════════
-// COLOR SWATCHES
+// DRAW LAYER SETUP
 // ═══════════════════════════════════════════════════════════
-COLORS.forEach(c => {
-  const sw = document.createElement('div');
-  sw.className = 'color-swatch' + (c === selectedColor ? ' sel' : '');
-  sw.style.background = c;
-  sw.onclick = () => {
-    selectedColor = c;
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('sel'));
-    sw.classList.add('sel');
-  };
-  document.getElementById('colorRow').appendChild(sw);
-});
-
-// ═══════════════════════════════════════════════════════════
-// STATES / COUNTIES
-// ═══════════════════════════════════════════════════════════
-const STATES = [["Alabama","AL"],["Alaska","AK"],["Arizona","AZ"],["Arkansas","AR"],["California","CA"],["Colorado","CO"],["Connecticut","CT"],["Delaware","DE"],["Florida","FL"],["Georgia","GA"],["Hawaii","HI"],["Idaho","ID"],["Illinois","IL"],["Indiana","IN"],["Iowa","IA"],["Kansas","KS"],["Kentucky","KY"],["Louisiana","LA"],["Maine","ME"],["Maryland","MD"],["Massachusetts","MA"],["Michigan","MI"],["Minnesota","MN"],["Mississippi","MS"],["Missouri","MO"],["Montana","MT"],["Nebraska","NE"],["Nevada","NV"],["New Hampshire","NH"],["New Jersey","NJ"],["New Mexico","NM"],["New York","NY"],["North Carolina","NC"],["North Dakota","ND"],["Ohio","OH"],["Oklahoma","OK"],["Oregon","OR"],["Pennsylvania","PA"],["Rhode Island","RI"],["South Carolina","SC"],["South Dakota","SD"],["Tennessee","TN"],["Texas","TX"],["Utah","UT"],["Vermont","VT"],["Virginia","VA"],["Washington","WA"],["West Virginia","WV"],["Wisconsin","WI"],["Wyoming","WY"]];
-const STATE_FIPS = {"AL":"01","AK":"02","AZ":"04","AR":"05","CA":"06","CO":"08","CT":"09","DE":"10","FL":"12","GA":"13","HI":"15","ID":"16","IL":"17","IN":"18","IA":"19","KS":"20","KY":"21","LA":"22","ME":"23","MD":"24","MA":"25","MI":"26","MN":"27","MS":"28","MO":"29","MT":"30","NE":"31","NV":"32","NH":"33","NJ":"34","NM":"35","NY":"36","NC":"37","ND":"38","OH":"39","OK":"40","OR":"41","PA":"42","RI":"44","SC":"45","SD":"46","TN":"47","TX":"48","UT":"49","VT":"50","VA":"51","WA":"53","WV":"54","WI":"55","WY":"56"};
-
-const stateSelect = document.getElementById('stateSelect');
-STATES.forEach(([name, abbr]) => {
-  const o = document.createElement('option'); o.value = abbr; o.textContent = name;
-  stateSelect.appendChild(o);
-});
-
-// ═══════════════════════════════════════════════════════════
-// COUNTY DATA
-// ═══════════════════════════════════════════════════════════
-const COUNTY_DATA = {};
-
-async function loadCounties() {
-  const abbr = stateSelect.value;
-  if (!abbr) return;
-  const cs = document.getElementById('countySelect');
-  cs.innerHTML = '<option value="">Loading counties...</option>';
-
-  function populateDropdown(counties) {
-    cs.innerHTML = '<option value="">— Select County —</option>';
-    counties.forEach(name => {
-      const o = document.createElement('option'); o.value = name; o.textContent = name + ' County';
-      cs.appendChild(o);
-    });
-    const saved = loadAppState();
-    if (saved && saved.state === abbr && saved.county) cs.value = saved.county;
-  }
-
-  // 1. Check cache first
-  try {
-    const cached = localStorage.getItem('counties_' + abbr);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed && parsed.counties && parsed.abbr === abbr &&
-          Date.now() - parsed.ts < 30 * 24 * 60 * 60 * 1000) {
-        populateDropdown(parsed.counties);
-        return;
-      } else {
-        localStorage.removeItem('counties_' + abbr);
-      }
+function _initDrawLayers() {
+  function addSrc(id, type) {
+    if (!map.getSource(id)) {
+      const empty = type === 'Polygon'
+        ? { type:'Feature', properties:{}, geometry:{ type:'Polygon', coordinates:[[]] } }
+        : type === 'LineString'
+        ? { type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates:[] } }
+        : { type:'FeatureCollection', features:[] };
+      map.addSource(id, { type:'geojson', data: empty });
     }
-  } catch(e) { localStorage.removeItem('counties_' + abbr); }
-
-  // 2. Fetch from Census API
-  try {
-    const fips = STATE_FIPS[abbr];
-    const r = await fetch(`https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${fips}`);
-    const data = await r.json();
-    const stateName = STATES.find(s => s[1] === abbr)[0];
-    const counties = data.slice(1).map(row => row[0].replace(`, ${stateName}`, '').replace(/ County$/, '').trim()).sort();
-    // Save to cache
-    try { localStorage.setItem('counties_' + abbr, JSON.stringify({ counties, abbr, ts: Date.now() })); } catch(e) {}
-    populateDropdown(counties);
-  } catch(e) {
-    // 3. Try stale cache as last resort
-    try {
-      const stale = localStorage.getItem('counties_' + abbr);
-      if (stale) { populateDropdown(JSON.parse(stale).counties); return; }
-    } catch(e2) {}
-    cs.innerHTML = '<option value="">Failed to load — check connection</option>';
   }
+  addSrc(SRC_FILL,    'Polygon');
+  addSrc(SRC_LINE,    'LineString');
+  addSrc(SRC_PREVIEW, 'LineString');
+  addSrc(SRC_VERTS,   'FeatureCollection');
+
+  if (!map.getLayer(SRC_FILL))
+    map.addLayer({ id: SRC_FILL, type:'fill', source: SRC_FILL,
+      paint:{ 'fill-color':['get','color'], 'fill-opacity':0.12 } });
+
+  if (!map.getLayer(SRC_LINE))
+    map.addLayer({ id: SRC_LINE, type:'line', source: SRC_LINE,
+      paint:{ 'line-color':['get','color'], 'line-width':2.5, 'line-dasharray':[2,2] } });
+
+  if (!map.getLayer(SRC_PREVIEW))
+    map.addLayer({ id: SRC_PREVIEW, type:'line', source: SRC_PREVIEW,
+      paint:{ 'line-color':['get','color'], 'line-width':1.5, 'line-dasharray':[2,3] } });
+
+  if (!map.getLayer(SRC_VERTS))
+    map.addLayer({ id: SRC_VERTS, type:'circle', source: SRC_VERTS,
+      paint:{ 'circle-radius':4, 'circle-color':['get','color'],
+              'circle-stroke-color':'#fff', 'circle-stroke-width':1.5 } });
 }
 
-async function loadCounty() {
-  const abbr = stateSelect.value;
-  const county = document.getElementById('countySelect').value;
-  saveAppState();
-  if (!abbr || !county) return;
-  if (countyLayer) { map.removeLayer(countyLayer); countyLayer = null; }
-  showToast('Loading county boundary...', 'info');
-  try {
-    const fips = STATE_FIPS[abbr];
-    const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(county)}'&outFields=*&f=geojson`;
-    const r = await fetch(url);
-    const geojson = await r.json();
-    if (geojson.features && geojson.features.length > 0) {
-      countyLayer = L.geoJSON(geojson, {
-        style: { color:'#6600cc', weight:3, fillColor:'#000000', fillOpacity:0.15 }
-      }).addTo(map);
-      map.fitBounds(countyLayer.getBounds(), { padding:[30,30] });
-      showToast(`${county} County loaded`, 'success');
-    } else {
-      showToast('County boundary not found', 'error');
-    }
-  } catch(e) {
-    showToast('Could not load county boundary', 'error');
-  }
+function _setDrawSrc(srcId, data) {
+  if (map.getSource(srcId)) map.getSource(srcId).setData(data);
+}
+function _emptyPoly()   { return { type:'Feature', properties:{}, geometry:{ type:'Polygon', coordinates:[[]] } }; }
+function _emptyLine()   { return { type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates:[] } }; }
+function _emptyPoints() { return { type:'FeatureCollection', features:[] }; }
+function _clearDrawPreviews() {
+  _setDrawSrc(SRC_FILL,    _emptyPoly());
+  _setDrawSrc(SRC_LINE,    _emptyLine());
+  _setDrawSrc(SRC_PREVIEW, _emptyLine());
+  _setDrawSrc(SRC_VERTS,   _emptyPoints());
 }
 
 // ═══════════════════════════════════════════════════════════
-// DRAWING
+// ZONE LAYER MANAGEMENT
 // ═══════════════════════════════════════════════════════════
-function startDraw(mode) {
-  cancelDraw();
-  drawMode = mode;
-  drawPoints = [];
-  map.getContainer().style.cursor = 'crosshair';
-  document.getElementById('btnPolygon').classList.toggle('active', mode === 'polygon');
-  document.getElementById('btnRectangle').classList.toggle('active', mode === 'rectangle');
-  document.getElementById('btnCancel').style.display = 'block';
-  const hint = document.getElementById('drawHint');
-  hint.style.display = 'block';
-  if (mode === 'polygon') {
-    hint.textContent = '📍 Click to add points — Double-click to finish';
-    document.getElementById('drawHelp').textContent = 'Click to place points. Double-click to close the shape.';
+function _srcId(id)  { return 'zone-src-'  + id; }
+function _fillId(id) { return 'zone-fill-' + id; }
+function _lineId(id) { return 'zone-line-' + id; }
+
+function _addZoneLayers(poly) {
+  const { id, color, points } = poly;
+  const geojson = _toPolygonFeature(points, color);
+  if (!map.getSource(_srcId(id))) {
+    map.addSource(_srcId(id), { type:'geojson', data: geojson });
   } else {
-    hint.textContent = '⬜ Click and drag to draw a rectangle';
-    document.getElementById('drawHelp').textContent = 'Click and drag on the map to draw a rectangular zone.';
+    map.getSource(_srcId(id)).setData(geojson);
   }
+  if (!map.getLayer(_fillId(id))) {
+    map.addLayer({ id:_fillId(id), type:'fill', source:_srcId(id),
+      paint:{ 'fill-color': color, 'fill-opacity': 0.2 } });
+  }
+  if (!map.getLayer(_lineId(id))) {
+    map.addLayer({ id:_lineId(id), type:'line', source:_srcId(id),
+      paint:{ 'line-color': color, 'line-width': 2 } });
+  }
+  map.on('click', _fillId(id), e => { e.preventDefault(); openNameModal(id); });
+  map.on('mouseenter', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = ''; });
 }
 
+function _updateZoneData(poly) {
+  if (map.getSource(_srcId(poly.id)))
+    map.getSource(_srcId(poly.id)).setData(_toPolygonFeature(poly.points, poly.color));
+}
+
+function _removeZoneLayers(id) {
+  if (map.getLayer(_fillId(id)))  map.removeLayer(_fillId(id));
+  if (map.getLayer(_lineId(id)))  map.removeLayer(_lineId(id));
+  if (map.getSource(_srcId(id)))  map.removeSource(_srcId(id));
+}
+
+function _restoreAllZoneLayers() {
+  polygons.forEach(p => _addZoneLayers(p));
+}
+
+function _toPolygonFeature(points, color) {
+  return {
+    type:'Feature', properties:{ color },
+    geometry:{ type:'Polygon', coordinates:[[...points, points[0]]] }
+  };
+}
+
+// ── Zone label HTML markers ───────────────────────────────
+function _addZoneLabel(poly) {
+  _removeZoneLabel(poly);
+  const el = document.createElement('div');
+  el.className = 'zone-label';
+  el.textContent = poly.name;
+  poly.labelMarker = new mapboxgl.Marker({ element: el, anchor:'center' })
+    .setLngLat(_polyCenter(poly.points)).addTo(map);
+}
+function _removeZoneLabel(poly) {
+  if (poly.labelMarker) { poly.labelMarker.remove(); poly.labelMarker = null; }
+}
+function _polyCenter(points) {
+  const lngs = points.map(p => p[0]), lats = points.map(p => p[1]);
+  return [(Math.min(...lngs)+Math.max(...lngs))/2, (Math.min(...lats)+Math.max(...lats))/2];
+}
+
+// ═══════════════════════════════════════════════════════════
+// PIXEL DISTANCE  (geographic → screen px via map.project)
+// ═══════════════════════════════════════════════════════════
+function pixelDist(lngLat1, lngLat2) {
+  const a = map.project(lngLat1), b = map.project(lngLat2);
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAWING — CANCEL / START
+// ═══════════════════════════════════════════════════════════
 function cancelDraw() {
-  drawMode = null; drawPoints = []; rectStart = null; isDragging = false;
-  if (drawPolyline) { map.removeLayer(drawPolyline); drawPolyline = null; }
-  if (drawPreview) { map.removeLayer(drawPreview); drawPreview = null; }
-  map.getContainer().style.cursor = '';
+  drawMode = null; polyState = 'idle';
+  drawPoints = []; rectStart = null; isDragging = false;
+  _pendingRectBounds = null;
+  _clearDrawPreviews();
+  map.dragPan.enable();
+  map.boxZoom.enable();
+  map.getCanvas().style.cursor = '';
   document.getElementById('btnPolygon').classList.remove('active');
   document.getElementById('btnRectangle').classList.remove('active');
   document.getElementById('btnCancel').style.display = 'none';
@@ -506,55 +452,215 @@ function cancelDraw() {
   document.getElementById('drawHelp').textContent = 'Select a mode above, then draw on the map.';
 }
 
+function startDraw(mode) {
+  cancelDraw();
+  drawMode = mode;
+  polyState = mode === 'polygon' ? 'drawing' : 'idle';
+  map.getCanvas().style.cursor = 'crosshair';
+  document.getElementById('btnPolygon').classList.toggle('active', mode === 'polygon');
+  document.getElementById('btnRectangle').classList.toggle('active', mode === 'rectangle');
+  document.getElementById('btnCancel').style.display = 'block';
+  const hint = document.getElementById('drawHint');
+  hint.style.display = 'block';
+  if (mode === 'polygon') {
+    hint.textContent = '📍 Click to add vertices — click first point to close';
+    document.getElementById('drawHelp').textContent = 'Click to place vertices. Click the first point to close the polygon.';
+  } else {
+    hint.textContent = '⬜ Click and drag to draw a rectangle';
+    document.getElementById('drawHelp').textContent = 'Click and drag on the map to draw a rectangular zone.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// POLYGON TOOL
+// ═══════════════════════════════════════════════════════════
 map.on('click', function(e) {
-  if (drawMode !== 'polygon') return;
-  drawPoints.push(e.latlng);
-  if (drawPolyline) map.removeLayer(drawPolyline);
-  drawPolyline = L.polyline(drawPoints, { color: selectedColor, weight: 2, dashArray: '5 5' }).addTo(map);
-  if (drawPoints.length >= 3) {
-    if (drawPreview) map.removeLayer(drawPreview);
-    drawPreview = L.polygon(drawPoints, { color: selectedColor, fillColor: selectedColor, fillOpacity: 0.15, weight: 2 }).addTo(map);
+  if (window.innerWidth <= 700) document.getElementById('sidebar').classList.remove('open');
+  if (drawMode !== 'polygon' || polyState !== 'drawing') return;
+
+  const lngLat = [e.lngLat.lng, e.lngLat.lat];
+
+  // Auto-close when clicking within 10px of first vertex
+  if (drawPoints.length >= 3 && pixelDist(lngLat, drawPoints[0]) <= 10) {
+    _finishPolygon(); return;
+  }
+
+  drawPoints.push(lngLat);
+  _refreshPolyPreviews(null);
+});
+
+map.on('mousemove', function(e) {
+  const cursor = [e.lngLat.lng, e.lngLat.lat];
+
+  // Polygon live preview line
+  if (drawMode === 'polygon' && polyState === 'drawing' && drawPoints.length >= 1) {
+    const nearClose = drawPoints.length >= 3 && pixelDist(cursor, drawPoints[0]) <= 10;
+    map.getCanvas().style.cursor = nearClose ? 'pointer' : 'crosshair';
+    _refreshPolyPreviews(cursor, nearClose);
+  }
+
+  // Rectangle drag preview
+  if (drawMode === 'rectangle' && isDragging && rectStart) {
+    _refreshRectPreview(rectStart, cursor);
   }
 });
 
-map.on('dblclick', function(e) {
-  if (drawMode !== 'polygon') return;
-  L.DomEvent.stop(e);
+function _refreshPolyPreviews(cursorLngLat, nearClose) {
+  const color = selectedColor;
+
+  // Committed open path
+  _setDrawSrc(SRC_LINE, drawPoints.length >= 2
+    ? { type:'Feature', properties:{ color }, geometry:{ type:'LineString', coordinates: drawPoints } }
+    : _emptyLine());
+
+  // Fill preview (3+ points)
+  _setDrawSrc(SRC_FILL, drawPoints.length >= 3
+    ? { type:'Feature', properties:{ color }, geometry:{ type:'Polygon', coordinates:[[...drawPoints, drawPoints[0]]] } }
+    : _emptyPoly());
+
+  // Cursor rubber-band line
+  if (cursorLngLat && drawPoints.length >= 1) {
+    const previewColor = nearClose ? '#00ff88' : color;
+    _setDrawSrc(SRC_PREVIEW, {
+      type:'Feature', properties:{ color: previewColor },
+      geometry:{ type:'LineString', coordinates:[ drawPoints[drawPoints.length-1], cursorLngLat ] }
+    });
+    if (map.getLayer(SRC_PREVIEW)) {
+      map.setPaintProperty(SRC_PREVIEW, 'line-color', previewColor);
+      map.setPaintProperty(SRC_PREVIEW, 'line-width', nearClose ? 2.5 : 1.5);
+      map.setPaintProperty(SRC_PREVIEW, 'line-dasharray', nearClose ? [1] : [2, 3]);
+    }
+  } else {
+    _setDrawSrc(SRC_PREVIEW, _emptyLine());
+  }
+
+  // Vertex dots (first dot green so user knows where to click to close)
+  _setDrawSrc(SRC_VERTS, {
+    type:'FeatureCollection',
+    features: drawPoints.map((p, i) => ({
+      type:'Feature',
+      properties:{ color: i === 0 ? '#00ff88' : color },
+      geometry:{ type:'Point', coordinates: p }
+    }))
+  });
+}
+
+function _finishPolygon() {
   if (drawPoints.length < 3) { showToast('Need at least 3 points', 'error'); return; }
   const pts = drawPoints.slice();
   const color = selectedColor;
   cancelDraw();
   openNameModalForNew(pts, color);
-});
+}
 
+// ═══════════════════════════════════════════════════════════
+// RECTANGLE TOOL
+// ═══════════════════════════════════════════════════════════
 map.on('mousedown', function(e) {
   if (drawMode !== 'rectangle') return;
-  rectStart = e.latlng; isDragging = true;
-});
-
-map.on('mousemove', function(e) {
-  if (drawMode === 'rectangle' && isDragging && rectStart) {
-    if (drawPreview) map.removeLayer(drawPreview);
-    drawPreview = L.rectangle(L.latLngBounds(rectStart, e.latlng), {
-      color: selectedColor, fillColor: selectedColor, fillOpacity: 0.15, weight: 2
-    }).addTo(map);
-  }
+  if (e.originalEvent.button !== 0) return;
+  rectStart = [e.lngLat.lng, e.lngLat.lat];
+  isDragging = true;
+  map.dragPan.disable();
+  map.boxZoom.disable();
+  e.preventDefault();
 });
 
 map.on('mouseup', function(e) {
   if (drawMode !== 'rectangle' || !isDragging || !rectStart) return;
   isDragging = false;
-  const end = e.latlng;
-  if (Math.abs(rectStart.lat - end.lat) < 0.001 && Math.abs(rectStart.lng - end.lng) < 0.001) { rectStart = null; if (drawPreview) { map.removeLayer(drawPreview); drawPreview = null; } return; }
-  const bounds = L.latLngBounds(rectStart, end);
-  const ne = bounds.getNorthEast(), sw = bounds.getSouthWest();
-  const pts = [L.latLng(ne.lat, sw.lng), L.latLng(ne.lat, ne.lng), L.latLng(sw.lat, ne.lng), L.latLng(sw.lat, sw.lng)];
+  map.dragPan.enable();
+  map.boxZoom.enable();
+
+  const end = [e.lngLat.lng, e.lngLat.lat];
+  if (pixelDist(rectStart, end) < 5) {
+    rectStart = null; _clearDrawPreviews(); return;
+  }
+
+  const bounds = _makeBounds(rectStart, end);
+  const pts = _rectCorners(bounds);
   const color = selectedColor;
-  if (drawPreview) { map.removeLayer(drawPreview); drawPreview = null; }
-  cancelDraw();
-  openNameModalForNew(pts, color);
+
   rectStart = null;
+  _clearDrawPreviews();
+
+  // Exit draw mode
+  drawMode = null;
+  map.getCanvas().style.cursor = '';
+  document.getElementById('btnRectangle').classList.remove('active');
+  document.getElementById('btnCancel').style.display = 'none';
+  document.getElementById('drawHint').style.display = 'none';
+  document.getElementById('drawHelp').textContent = 'Select a mode above, then draw on the map.';
+
+  _pendingRectBounds = bounds;
+  openNameModalForNew(pts, color);
 });
+
+function _refreshRectPreview(start, end) {
+  const b = _makeBounds(start, end);
+  const corners = _rectCorners(b);
+  const color = selectedColor;
+  _setDrawSrc(SRC_FILL, { type:'Feature', properties:{ color },
+    geometry:{ type:'Polygon', coordinates:[[...corners, corners[0]]] } });
+  _setDrawSrc(SRC_LINE, { type:'Feature', properties:{ color },
+    geometry:{ type:'LineString', coordinates:[...corners, corners[0]] } });
+}
+
+function _makeBounds(a, b) {
+  return { minLng:Math.min(a[0],b[0]), maxLng:Math.max(a[0],b[0]),
+           minLat:Math.min(a[1],b[1]), maxLat:Math.max(a[1],b[1]) };
+}
+function _rectCorners(b) {
+  return [
+    [b.minLng, b.minLat], // SW
+    [b.maxLng, b.minLat], // SE
+    [b.maxLng, b.maxLat], // NE
+    [b.minLng, b.maxLat], // NW
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECTANGLE EDITABLE HANDLES
+// ═══════════════════════════════════════════════════════════
+function _addRectHandles(poly, bounds) {
+  _removeRectHandles(poly);
+  poly._isRect = true;
+  poly._bounds = { ...bounds };
+  poly.handles = [];
+
+  const KEYS = ['sw','se','ne','nw'];
+  const positions = _rectCorners(bounds);
+
+  KEYS.forEach((key, i) => {
+    const el = document.createElement('div');
+    el.className = 'rect-handle';
+    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor:'center' })
+      .setLngLat(positions[i]).addTo(map);
+
+    marker.on('dragstart', () => { map.dragPan.disable(); });
+    marker.on('drag', () => {
+      const ll = marker.getLngLat();
+      const opp = _oppositeCorner(key, poly._bounds);
+      const nb = _makeBounds([ll.lng, ll.lat], opp);
+      poly._bounds = nb;
+      poly.points = _rectCorners(nb);
+      _updateZoneData(poly);
+      const newPos = _rectCorners(nb);
+      poly.handles.forEach((h, j) => { if (KEYS[j] !== key) h.setLngLat(newPos[j]); });
+      if (poly.labelMarker) poly.labelMarker.setLngLat(_polyCenter(poly.points));
+    });
+    marker.on('dragend', () => { map.dragPan.enable(); persistZones(); });
+    poly.handles.push(marker);
+  });
+}
+
+function _removeRectHandles(poly) {
+  if (poly.handles) { poly.handles.forEach(h => h.remove()); poly.handles = []; }
+}
+
+function _oppositeCorner(key, b) {
+  return { sw:[b.maxLng,b.maxLat], se:[b.minLng,b.maxLat], ne:[b.minLng,b.minLat], nw:[b.maxLng,b.minLat] }[key];
+}
 
 // ═══════════════════════════════════════════════════════════
 // NAME MODAL
@@ -565,7 +671,6 @@ function openNameModalForNew(pts, color) {
   document.getElementById('nameModal').classList.add('open');
   setTimeout(() => document.getElementById('polyNameInput').focus(), 100);
 }
-
 function openNameModal(polyId) {
   editingPolyId = polyId; pendingPts = null;
   const p = polygons.find(p => p.id === polyId);
@@ -573,21 +678,30 @@ function openNameModal(polyId) {
   document.getElementById('nameModal').classList.add('open');
   setTimeout(() => document.getElementById('polyNameInput').focus(), 100);
 }
-
 function closeNameModal() {
   document.getElementById('nameModal').classList.remove('open');
-  pendingPts = null; editingPolyId = null;
+  pendingPts = null; editingPolyId = null; _pendingRectBounds = null;
 }
-
 function savePolyName() {
   const name = document.getElementById('polyNameInput').value.trim();
   if (!name) { showToast('Please enter a zone name', 'error'); return; }
 
   if (editingPolyId) {
     const p = polygons.find(p => p.id === editingPolyId);
-    if (p) { p.name = name; p.layer.unbindTooltip(); p.layer.bindTooltip(name, { permanent:true, direction:'center', className:'poly-tooltip' }); }
+    if (p) { p.name = name; _removeZoneLabel(p); _addZoneLabel(p); }
   } else if (pendingPts) {
-    addPolygonToMap({ id: 'poly_' + Date.now(), name, color: pendingColor, points: pendingPts.map(ll => [ll.lat, ll.lng]) });
+    const poly = {
+      id: 'poly_' + Date.now(), name, color: pendingColor,
+      points: pendingPts, labelMarker: null, handles: [],
+      _isRect: false, _bounds: null,
+    };
+    polygons.push(poly);
+    _addZoneLayers(poly);
+    _addZoneLabel(poly);
+    if (_pendingRectBounds) {
+      _addRectHandles(poly, _pendingRectBounds);
+      _pendingRectBounds = null;
+    }
   }
 
   closeNameModal();
@@ -595,24 +709,10 @@ function savePolyName() {
   persistZones();
   showToast(`Zone "${name}" saved`, 'success');
 }
-
 document.getElementById('polyNameInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') savePolyName();
   if (e.key === 'Escape') closeNameModal();
 });
-
-// ═══════════════════════════════════════════════════════════
-// ADD POLYGON TO MAP (used by draw + load)
-// ═══════════════════════════════════════════════════════════
-function addPolygonToMap(data) {
-  const { id, name, color, points } = data;
-  const latlngs = points.map(p => L.latLng(p[0], p[1]));
-  const layer = L.polygon(latlngs, { color, fillColor: color, fillOpacity: 0.2, weight: 2 }).addTo(map);
-  layer.bindTooltip(name, { permanent: true, direction: 'center', className: 'poly-tooltip' });
-  layer.on('click', () => openNameModal(id));
-  polygons.push({ id, name, color, layer, points });
-  return layer;
-}
 
 // ═══════════════════════════════════════════════════════════
 // POLYGON LIST
@@ -638,7 +738,11 @@ function renderPolygonList() {
       <button class="poly-btn" title="Rename" onclick="openNameModal('${p.id}');event.stopPropagation()">✎</button>
       <button class="poly-btn" title="Delete" onclick="deletePoly('${p.id}');event.stopPropagation()">✕</button>
     `;
-    div.onclick = () => { try { map.fitBounds(p.layer.getBounds(), { padding:[40,40] }); } catch(e) {} };
+    div.onclick = () => {
+      const b = new mapboxgl.LngLatBounds();
+      p.points.forEach(pt => b.extend(pt));
+      map.fitBounds(b, { padding:60 });
+    };
     list.appendChild(div);
   });
 }
@@ -646,241 +750,197 @@ function renderPolygonList() {
 function deletePoly(id) {
   const i = polygons.findIndex(p => p.id === id);
   if (i === -1) return;
-  map.removeLayer(polygons[i].layer);
+  const p = polygons[i];
+  _removeZoneLabel(p); _removeRectHandles(p); _removeZoneLayers(id);
+  properties.forEach(prop => { if (prop.zone === p.name) { _markerColor(prop.marker, '#f7c948'); prop.zone = null; } });
   polygons.splice(i, 1);
-  renderPolygonList();
-  persistZones();
+  renderPolygonList(); persistZones();
 }
 
 function clearAllZones() {
   if (!polygons.length) return;
   if (!confirm('Delete all zones? This cannot be undone.')) return;
-  polygons.forEach(p => map.removeLayer(p.layer));
+  polygons.forEach(p => { _removeZoneLabel(p); _removeRectHandles(p); _removeZoneLayers(p.id); });
   polygons = [];
-  renderPolygonList();
-  persistZones();
+  properties.forEach(prop => { if (prop.zone) { _markerColor(prop.marker, '#f7c948'); prop.zone = null; } });
+  renderPolygonList(); persistZones();
   showToast('All zones cleared', 'info');
 }
 
 // ═══════════════════════════════════════════════════════════
-// FEATURE 1: PERSIST ZONES TO LOCALSTORAGE
+// PERSIST ZONES
 // ═══════════════════════════════════════════════════════════
 function persistZones() {
   try {
-    const data = polygons.map(p => ({ id: p.id, name: p.name, color: p.color, points: p.points }));
-    localStorage.setItem('geofence_zones', JSON.stringify(data));
+    localStorage.setItem('geofence_zones', JSON.stringify(
+      polygons.map(p => ({ id:p.id, name:p.name, color:p.color, points:p.points, isRect:!!p._isRect, bounds:p._bounds||null }))
+    ));
   } catch(e) {}
 }
-
 function restoreZones() {
   try {
     const raw = localStorage.getItem('geofence_zones');
     if (!raw) return;
     const data = JSON.parse(raw);
-    data.forEach(d => addPolygonToMap(d));
+    data.forEach(d => _loadZone(d));
     renderPolygonList();
-    if (data.length) showToast(`Restored ${data.length} saved zone${data.length > 1 ? 's' : ''}`, 'success');
+    if (data.length) showToast(`Restored ${data.length} saved zone${data.length > 1 ? 's':''}`, 'success');
   } catch(e) {}
 }
-
-function saveAppState() {
-  try {
-    localStorage.setItem('geofence_app_state', JSON.stringify({
-      state: stateSelect.value,
-      county: document.getElementById('countySelect').value
-    }));
-  } catch(e) {}
-}
-
-function loadAppState() {
-  try { return JSON.parse(localStorage.getItem('geofence_app_state')); } catch(e) { return null; }
+function _loadZone(d) {
+  const poly = { id:d.id, name:d.name, color:d.color, points:d.points,
+                 labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
+  polygons.push(poly);
+  _addZoneLayers(poly);
+  _addZoneLabel(poly);
+  if (poly._isRect && poly._bounds) _addRectHandles(poly, poly._bounds);
+  return poly;
 }
 
 // ═══════════════════════════════════════════════════════════
-// FEATURE 4: SAVE / LOAD ZONES FILE
+// SAVE / LOAD ZONES FILE
 // ═══════════════════════════════════════════════════════════
 function saveZonesFile() {
   if (!polygons.length) { showToast('No zones to save', 'error'); return; }
-  const data = { version: 1, saved: new Date().toISOString(), zones: polygons.map(p => ({ id: p.id, name: p.name, color: p.color, points: p.points })) };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const data = { version:1, saved:new Date().toISOString(),
+    zones: polygons.map(p => ({ id:p.id, name:p.name, color:p.color, points:p.points, isRect:!!p._isRect, bounds:p._bounds||null })) };
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
   a.download = `geofence-zones-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   showToast('Zones file downloaded!', 'success');
 }
-
-function loadZonesFile() {
-  document.getElementById('zoneFileInput').click();
-}
-
+function loadZonesFile() { document.getElementById('zoneFileInput').click(); }
 function importZonesFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = function(ev) {
     try {
       const data = JSON.parse(ev.target.result);
-      const zones = data.zones || data; // support both wrapped and raw array
+      const zones = data.zones || data;
       if (!Array.isArray(zones)) throw new Error('Invalid format');
-      // Clear existing
-      polygons.forEach(p => map.removeLayer(p.layer));
+      polygons.forEach(p => { _removeZoneLabel(p); _removeRectHandles(p); _removeZoneLayers(p.id); });
       polygons = [];
-      zones.forEach(d => addPolygonToMap(d));
-      renderPolygonList();
-      persistZones();
-      showToast(`Loaded ${zones.length} zone${zones.length !== 1 ? 's' : ''} from file`, 'success');
-      // Zoom to fit all zones
+      zones.forEach(d => _loadZone(d));
+      renderPolygonList(); persistZones();
+      showToast(`Loaded ${zones.length} zone${zones.length!==1?'s':''} from file`, 'success');
       if (polygons.length) {
-        const group = L.featureGroup(polygons.map(p => p.layer));
-        map.fitBounds(group.getBounds(), { padding:[40,40] });
+        const b = new mapboxgl.LngLatBounds();
+        polygons.forEach(p => p.points.forEach(pt => b.extend(pt)));
+        map.fitBounds(b, { padding:60 });
       }
-    } catch(err) {
-      showToast('Could not read zones file — make sure it was saved by this app', 'error');
-    }
+    } catch(err) { showToast('Could not read zones file — make sure it was saved by this app', 'error'); }
     e.target.value = '';
   };
   reader.readAsText(file);
 }
 
 // ═══════════════════════════════════════════════════════════
-// FEATURE 2: SHARE URL
+// SHARE URL
 // ═══════════════════════════════════════════════════════════
 function shareURL() {
   if (!polygons.length) { showToast('Draw some zones first to share them', 'error'); return; }
-  const data = polygons.map(p => ({ id: p.id, name: p.name, color: p.color, points: p.points }));
+  const data = polygons.map(p => ({ id:p.id, name:p.name, color:p.color, points:p.points, isRect:!!p._isRect, bounds:p._bounds||null }));
   const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
   const url = window.location.origin + window.location.pathname + '?zones=' + encoded;
-  if (url.length > 8000) {
-    showToast('Too many zones to encode in a URL — use Save Zones file instead', 'error');
-    return;
-  }
-  navigator.clipboard.writeText(url).then(() => {
-    showToast('Share link copied to clipboard!', 'success');
-  }).catch(() => {
-    // fallback: show banner with URL
-    const banner = document.getElementById('shareBanner');
-    banner.textContent = '🔗 ' + url;
-    banner.style.display = 'block';
-    setTimeout(() => banner.style.display = 'none', 8000);
+  if (url.length > 8000) { showToast('Too many zones — use Save Zones file instead', 'error'); return; }
+  navigator.clipboard.writeText(url).then(() => showToast('Share link copied!', 'success')).catch(() => {
+    const b = document.getElementById('shareBanner');
+    b.textContent = '🔗 ' + url; b.style.display = 'block';
+    setTimeout(() => b.style.display = 'none', 8000);
   });
 }
-
 function copyShareURL() {
-  const banner = document.getElementById('shareBanner');
-  navigator.clipboard.writeText(banner.textContent.replace('🔗 ', '')).then(() => {
-    showToast('Copied!', 'success');
-    banner.style.display = 'none';
-  });
+  const b = document.getElementById('shareBanner');
+  navigator.clipboard.writeText(b.textContent.replace('🔗 ','')).then(() => { showToast('Copied!','success'); b.style.display='none'; });
 }
-
 function loadZonesFromURL() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const encoded = params.get('zones');
+    const encoded = new URLSearchParams(window.location.search).get('zones');
     if (!encoded) return false;
     const data = JSON.parse(decodeURIComponent(atob(encoded)));
-    data.forEach(d => addPolygonToMap(d));
+    data.forEach(d => _loadZone(d));
     renderPolygonList();
     if (polygons.length) {
-      const group = L.featureGroup(polygons.map(p => p.layer));
-      map.fitBounds(group.getBounds(), { padding:[40,40] });
-      showToast(`Loaded ${polygons.length} shared zone${polygons.length !== 1 ? 's' : ''}`, 'success');
+      const b = new mapboxgl.LngLatBounds();
+      polygons.forEach(p => p.points.forEach(pt => b.extend(pt)));
+      map.fitBounds(b, { padding:60 });
+      showToast(`Loaded ${polygons.length} shared zone${polygons.length!==1?'s':''}`, 'success');
     }
     return true;
   } catch(e) { return false; }
 }
 
 // ═══════════════════════════════════════════════════════════
-// FEATURE 3: MOBILE SIDEBAR TOGGLE
+// SIDEBAR TOGGLE (mobile)
 // ═══════════════════════════════════════════════════════════
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-}
-
-// Close sidebar on map click (mobile)
-map.on('click', () => {
-  if (window.innerWidth <= 700) document.getElementById('sidebar').classList.remove('open');
-});
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
 // ═══════════════════════════════════════════════════════════
 // GOOGLE SHEETS
 // ═══════════════════════════════════════════════════════════
-function openSheetsModal() { document.getElementById('sheetsModal').classList.add('open'); }
+function openSheetsModal()  { document.getElementById('sheetsModal').classList.add('open'); }
 function closeSheetsModal() { document.getElementById('sheetsModal').classList.remove('open'); }
-
 async function connectSheets() {
   const sheetId = document.getElementById('sheetId').value.trim();
   if (!sheetId) { showToast('Please enter a Spreadsheet ID', 'error'); return; }
   sheetConfig = {
     sheetId,
     sheetName: document.getElementById('sheetName').value.trim() || 'Sheet1',
-    colLat: document.getElementById('colLat').value.trim() || 'latitude',
-    colLng: document.getElementById('colLng').value.trim() || 'longitude',
-    colAPN: document.getElementById('colAPN').value.trim() || 'APN',
-    colCity: document.getElementById('colCity').value.trim() || 'city',
-    colState: document.getElementById('colState').value.trim() || 'state',
-    colZip: document.getElementById('colZip').value.trim() || 'zip',
-    colZone: document.getElementById('colZone').value.trim() || 'Zone'
+    colLat:    document.getElementById('colLat').value.trim()    || 'latitude',
+    colLng:    document.getElementById('colLng').value.trim()    || 'longitude',
+    colAPN:    document.getElementById('colAPN').value.trim()    || 'APN',
+    colCity:   document.getElementById('colCity').value.trim()   || 'city',
+    colState:  document.getElementById('colState').value.trim()  || 'state',
+    colZip:    document.getElementById('colZip').value.trim()    || 'zip',
+    colZone:   document.getElementById('colZone').value.trim()   || 'Zone',
   };
-  // Save config for next session
   try { localStorage.setItem('geofence_sheet_config', JSON.stringify(sheetConfig)); } catch(e) {}
-
   showToast('Connecting to Google Sheets...', 'info');
   const url = `https://docs.google.com/spreadsheets/d/${sheetConfig.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetConfig.sheetName)}`;
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const csv = await r.text();
-    parseAndLoad(csv);
-    setConnected(true);
-    closeSheetsModal();
+    parseAndLoad(await r.text());
+    setConnected(true); closeSheetsModal();
   } catch(e) {
     showToast('Connection failed. Make sure sharing is set to Anyone with link → Viewer', 'error');
   }
 }
-
 function parseAndLoad(csv) {
   const rows = parseCSV(csv);
   if (rows.length < 2) { showToast('Sheet appears empty', 'error'); return; }
   const headers = rows[0];
   const { colLat, colLng, colAPN, colCity, colState, colZip } = sheetConfig;
-
-  const idx = name => headers.indexOf(name);
+  const idx = n => headers.indexOf(n);
   const latIdx = idx(colLat), lngIdx = idx(colLng);
-  if (latIdx === -1 || lngIdx === -1) {
-    showToast(`Columns "${colLat}" or "${colLng}" not found. Check ⚙ Sheets settings.`, 'error');
-    return;
-  }
+  if (latIdx === -1 || lngIdx === -1) { showToast(`Columns "${colLat}" or "${colLng}" not found. Check ⚙ Sheets settings.`, 'error'); return; }
 
-  properties.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
-  properties = [];
-  let loaded = 0;
+  properties.forEach(p => { if (p.marker) p.marker.remove(); });
+  properties = []; let loaded = 0;
 
   rows.slice(1).forEach((row, i) => {
     const lat = parseFloat(row[latIdx]), lng = parseFloat(row[lngIdx]);
     if (isNaN(lat) || isNaN(lng)) return;
-
-    const apn  = idx(colAPN)   !== -1 ? row[idx(colAPN)]   : `Row ${i+2}`;
-    const city = idx(colCity)  !== -1 ? row[idx(colCity)]  : '';
-    const st   = idx(colState) !== -1 ? row[idx(colState)] : '';
-    const zip  = idx(colZip)   !== -1 ? row[idx(colZip)]   : '';
+    const apn  = idx(colAPN)  !== -1 ? row[idx(colAPN)]  : `Row ${i+2}`;
+    const city = idx(colCity) !== -1 ? row[idx(colCity)] : '';
+    const st   = idx(colState)!== -1 ? row[idx(colState)]: '';
+    const zip  = idx(colZip)  !== -1 ? row[idx(colZip)]  : '';
     const location = [city, st, zip].filter(Boolean).join(', ');
 
-    const popup = `<div style="font-family:'Space Mono',monospace;font-size:12px;line-height:1.9">
-      <strong style="color:#00e5ff">APN: ${apn}</strong><br>
-      ${location ? `<span style="color:#e8f0fe">${location}</span><br>` : ''}
-      <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
-    </div>`;
-
-    const marker = L.circleMarker([lat, lng], {
-      radius: 5, color: '#f7c948', fillColor: '#f7c948', fillOpacity: 0.85, weight: 1
-    }).addTo(map).bindPopup(popup);
-
-    properties.push({ row, headers, lat, lng, apn, city, state: st, zip, marker, zone: null });
+    const popup = new mapboxgl.Popup({ offset:8 }).setHTML(
+      `<div style="font-family:'Space Mono',monospace;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
+        <strong style="color:#00e5ff">APN: ${apn}</strong><br>
+        ${location ? `<span>${location}</span><br>` : ''}
+        <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+      </div>`
+    );
+    const el = document.createElement('div');
+    el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#f7c948;border:1.5px solid rgba(0,0,0,0.4);cursor:pointer;';
+    const marker = new mapboxgl.Marker({ element:el }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
+    properties.push({ row, headers, lat, lng, apn, city, state:st, zip, marker, zone:null });
     loaded++;
   });
-
   document.getElementById('statProps').textContent = loaded;
   showToast(`Loaded ${loaded} properties from sheet`, 'success');
 }
@@ -888,20 +948,14 @@ function parseAndLoad(csv) {
 // ═══════════════════════════════════════════════════════════
 // ZONE ASSIGNMENT
 // ═══════════════════════════════════════════════════════════
-function pointInPolygon(lat, lng, layer) {
-  try {
-    let rings = layer.getLatLngs();
-    if (Array.isArray(rings[0]) || (rings[0] && rings[0][0] && rings[0][0].lat !== undefined)) rings = rings[0];
-    const x = lng, y = lat;
-    let inside = false;
-    for (let i = 0, j = rings.length - 1; i < rings.length; j = i++) {
-      const xi = rings[i].lng, yi = rings[i].lat, xj = rings[j].lng, yj = rings[j].lat;
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
-    }
-    return inside;
-  } catch(e) { return false; }
+function pointInPolygon(lat, lng, points) {
+  const x = lng, y = lat; let inside = false;
+  for (let i=0, j=points.length-1; i<points.length; j=i++) {
+    const xi=points[i][0], yi=points[i][1], xj=points[j][0], yj=points[j][1];
+    if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
 }
-
 function runAssignment() {
   if (!polygons.length) { showToast('Draw at least one zone first', 'error'); return; }
   if (!properties.length) { showToast('No properties loaded. Connect Google Sheets first.', 'error'); return; }
@@ -910,17 +964,20 @@ function runAssignment() {
   properties.forEach(prop => {
     prop.zone = null;
     for (const poly of polygons) {
-      if (pointInPolygon(prop.lat, prop.lng, poly.layer)) {
+      if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
         prop.zone = poly.name; poly.propCount++;
-        prop.marker.setStyle({ color: poly.color, fillColor: poly.color });
+        _markerColor(prop.marker, poly.color);
         assigned++; break;
       }
     }
-    if (!prop.zone) prop.marker.setStyle({ color: '#f7c948', fillColor: '#f7c948' });
+    if (!prop.zone) _markerColor(prop.marker, '#f7c948');
   });
   document.getElementById('statAssigned').textContent = assigned;
   renderPolygonList();
   showToast(`${assigned} of ${properties.length} properties assigned`, 'success');
+}
+function _markerColor(marker, color) {
+  if (marker) marker.getElement().style.background = color;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -939,27 +996,25 @@ function exportCSV() {
     row[zi] = prop.zone || '';
     rows.push(row.map(ce).join(','));
   });
-  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'properties_with_zones.csv'; a.click();
+  a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type:'text/csv'}));
+  a.download = 'properties_with_zones.csv'; a.click();
   showToast('CSV downloaded! Import it back into your Google Sheet.', 'success');
 }
-
 function ce(v) {
-  if (v == null) return '';
+  if (v==null) return '';
   const s = String(v);
-  return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
+  return (s.includes(',')||s.includes('"')||s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
 }
-
 function parseCSV(text) {
   const rows = [];
   text.split('\n').forEach(line => {
     if (!line.trim()) return;
-    const row = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-      else if (line[i] === ',' && !inQ) { row.push(cur.trim()); cur = ''; }
-      else cur += line[i];
+    const row=[]; let cur='', inQ=false;
+    for (let i=0;i<line.length;i++) {
+      if (line[i]==='"') { if (inQ&&line[i+1]==='"') {cur+='"';i++;} else inQ=!inQ; }
+      else if (line[i]===','&&!inQ) { row.push(cur.trim()); cur=''; }
+      else cur+=line[i];
     }
     row.push(cur.trim()); rows.push(row);
   });
@@ -967,62 +1022,135 @@ function parseCSV(text) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// COUNTY BOUNDARY
+// ═══════════════════════════════════════════════════════════
+const STATES = [["Alabama","AL"],["Alaska","AK"],["Arizona","AZ"],["Arkansas","AR"],["California","CA"],["Colorado","CO"],["Connecticut","CT"],["Delaware","DE"],["Florida","FL"],["Georgia","GA"],["Hawaii","HI"],["Idaho","ID"],["Illinois","IL"],["Indiana","IN"],["Iowa","IA"],["Kansas","KS"],["Kentucky","KY"],["Louisiana","LA"],["Maine","ME"],["Maryland","MD"],["Massachusetts","MA"],["Michigan","MI"],["Minnesota","MN"],["Mississippi","MS"],["Missouri","MO"],["Montana","MT"],["Nebraska","NE"],["Nevada","NV"],["New Hampshire","NH"],["New Jersey","NJ"],["New Mexico","NM"],["New York","NY"],["North Carolina","NC"],["North Dakota","ND"],["Ohio","OH"],["Oklahoma","OK"],["Oregon","OR"],["Pennsylvania","PA"],["Rhode Island","RI"],["South Carolina","SC"],["South Dakota","SD"],["Tennessee","TN"],["Texas","TX"],["Utah","UT"],["Vermont","VT"],["Virginia","VA"],["Washington","WA"],["West Virginia","WV"],["Wisconsin","WI"],["Wyoming","WY"]];
+const STATE_FIPS = {"AL":"01","AK":"02","AZ":"04","AR":"05","CA":"06","CO":"08","CT":"09","DE":"10","FL":"12","GA":"13","HI":"15","ID":"16","IL":"17","IN":"18","IA":"19","KS":"20","KY":"21","LA":"22","ME":"23","MD":"24","MA":"25","MI":"26","MN":"27","MS":"28","MO":"29","MT":"30","NE":"31","NV":"32","NH":"33","NJ":"34","NM":"35","NY":"36","NC":"37","ND":"38","OH":"39","OK":"40","OR":"41","PA":"42","RI":"44","SC":"45","SD":"46","TN":"47","TX":"48","UT":"49","VT":"50","VA":"51","WA":"53","WV":"54","WI":"55","WY":"56"};
+
+const stateSelect = document.getElementById('stateSelect');
+STATES.forEach(([name, abbr]) => {
+  const o = document.createElement('option'); o.value = abbr; o.textContent = name;
+  stateSelect.appendChild(o);
+});
+
+async function loadCounties() {
+  const abbr = stateSelect.value; if (!abbr) return;
+  const cs = document.getElementById('countySelect');
+  cs.innerHTML = '<option value="">Loading counties...</option>';
+  function fill(counties) {
+    cs.innerHTML = '<option value="">— Select County —</option>';
+    counties.forEach(name => { const o=document.createElement('option'); o.value=name; o.textContent=name+' County'; cs.appendChild(o); });
+    const s = loadAppState(); if (s&&s.state===abbr&&s.county) cs.value=s.county;
+  }
+  try {
+    const cached = localStorage.getItem('counties_'+abbr);
+    if (cached) {
+      const p = JSON.parse(cached);
+      if (p.counties&&p.abbr===abbr&&Date.now()-p.ts<30*24*60*60*1000) { fill(p.counties); return; }
+      localStorage.removeItem('counties_'+abbr);
+    }
+  } catch(e) {}
+  try {
+    const fips = STATE_FIPS[abbr];
+    const data = await (await fetch(`https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${fips}`)).json();
+    const stateName = STATES.find(s=>s[1]===abbr)[0];
+    const counties = data.slice(1).map(row=>row[0].replace(`, ${stateName}`,'').replace(/ County$/,'').trim()).sort();
+    try { localStorage.setItem('counties_'+abbr, JSON.stringify({counties,abbr,ts:Date.now()})); } catch(e) {}
+    fill(counties);
+  } catch(e) {
+    try { const s=localStorage.getItem('counties_'+abbr); if(s){fill(JSON.parse(s).counties);return;} } catch(e2){}
+    cs.innerHTML='<option value="">Failed to load — check connection</option>';
+  }
+}
+
+function _removeCountyLayer() {
+  if (!countySourceId) return;
+  if (map.getLayer(countySourceId+'-fill')) map.removeLayer(countySourceId+'-fill');
+  if (map.getLayer(countySourceId+'-line')) map.removeLayer(countySourceId+'-line');
+  if (map.getSource(countySourceId))        map.removeSource(countySourceId);
+  countySourceId = null;
+}
+
+async function loadCounty() {
+  const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
+  saveAppState(); if (!abbr||!county) return;
+  _removeCountyLayer();
+  showToast('Loading county boundary...', 'info');
+  try {
+    const fips = STATE_FIPS[abbr];
+    const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(county)}'&outFields=*&f=geojson`;
+    const geojson = await (await fetch(url)).json();
+    if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
+    countySourceId = 'county-'+Date.now();
+    map.addSource(countySourceId, { type:'geojson', data:geojson });
+    map.addLayer({ id:countySourceId+'-fill', type:'fill', source:countySourceId, paint:{'fill-color':'#000000','fill-opacity':0.15} });
+    map.addLayer({ id:countySourceId+'-line', type:'line', source:countySourceId, paint:{'line-color':'#6600cc','line-width':3} });
+    const bounds = new mapboxgl.LngLatBounds();
+    geojson.features.forEach(f => {
+      const coords = f.geometry.type==='Polygon' ? f.geometry.coordinates.flat()
+                   : f.geometry.type==='MultiPolygon' ? f.geometry.coordinates.flat(2) : [];
+      coords.forEach(c => bounds.extend(c));
+    });
+    map.fitBounds(bounds, { padding:40 });
+    showToast(`${county} County loaded`, 'success');
+  } catch(e) { showToast('Could not load county boundary', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 function setConnected(v) {
-  document.getElementById('statusDot').className = 'status-dot' + (v ? ' on' : '');
+  document.getElementById('statusDot').className = 'status-dot'+(v?' on':'');
   document.getElementById('statusText').textContent = v ? 'SHEET CONNECTED' : 'NOT CONNECTED';
 }
-
 let toastTimer;
-function showToast(msg, type = 'info') {
+function showToast(msg, type='info') {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast ' + type + ' show';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 4500);
+  t.textContent=msg; t.className='toast '+type+' show';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),4500);
 }
-
-document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeSheetsModal(); });
-document.getElementById('nameModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeNameModal(); });
+function saveAppState() {
+  try { localStorage.setItem('geofence_app_state', JSON.stringify({state:stateSelect.value, county:document.getElementById('countySelect').value})); } catch(e) {}
+}
+function loadAppState() {
+  try { return JSON.parse(localStorage.getItem('geofence_app_state')); } catch(e) { return null; } 
+}
+document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeSheetsModal(); });
+document.getElementById('nameModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeNameModal(); });
 
 // ═══════════════════════════════════════════════════════════
-// INIT — restore saved state on load
+// INIT
 // ═══════════════════════════════════════════════════════════
-(function init() {
-  // Try URL zones first (shared link)
+map.on('load', () => {
+  _initDrawLayers();
+
   const fromURL = loadZonesFromURL();
-
-  // If no URL zones, restore from localStorage
   if (!fromURL) restoreZones();
 
-  // Restore sheet config
   try {
-    const savedConfig = JSON.parse(localStorage.getItem('geofence_sheet_config'));
-    if (savedConfig) {
-      sheetConfig = savedConfig;
-      document.getElementById('sheetId').value = savedConfig.sheetId || '';
-      document.getElementById('sheetName').value = savedConfig.sheetName || 'Sheet1';
-      document.getElementById('colLat').value = savedConfig.colLat || 'latitude';
-      document.getElementById('colLng').value = savedConfig.colLng || 'longitude';
-      document.getElementById('colAPN').value = savedConfig.colAPN || 'APN';
-      document.getElementById('colCity').value = savedConfig.colCity || 'city';
-      document.getElementById('colState').value = savedConfig.colState || 'state';
-      document.getElementById('colZip').value = savedConfig.colZip || 'zip';
-      document.getElementById('colZone').value = savedConfig.colZone || 'Zone';
+    const cfg = JSON.parse(localStorage.getItem('geofence_sheet_config'));
+    if (cfg) {
+      sheetConfig = cfg;
+      document.getElementById('sheetId').value    = cfg.sheetId    || '';
+      document.getElementById('sheetName').value  = cfg.sheetName  || 'Sheet1';
+      document.getElementById('colLat').value     = cfg.colLat     || 'latitude';
+      document.getElementById('colLng').value     = cfg.colLng     || 'longitude';
+      document.getElementById('colAPN').value     = cfg.colAPN     || 'APN';
+      document.getElementById('colCity').value    = cfg.colCity    || 'city';
+      document.getElementById('colState').value   = cfg.colState   || 'state';
+      document.getElementById('colZip').value     = cfg.colZip     || 'zip';
+      document.getElementById('colZone').value    = cfg.colZone    || 'Zone';
     }
   } catch(e) {}
 
-  // Restore last selected state/county
   const appState = loadAppState();
   if (appState && appState.state) {
     stateSelect.value = appState.state;
     loadCounties().then(() => {
-      if (appState.county) {
-        document.getElementById('countySelect').value = appState.county;
-      }
+      if (appState.county) document.getElementById('countySelect').value = appState.county;
     });
   }
-})();
+});
 </script>
 </body>
 </html>
