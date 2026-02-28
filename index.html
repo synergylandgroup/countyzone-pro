@@ -271,7 +271,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
@@ -1024,32 +1023,6 @@ document.getElementById('nameModal').addEventListener('click', e => { if (e.targ
     });
   }
 })();
-
-  // Expose functions to global scope for HTML onchange/onclick handlers
-  window.loadCounties = loadCounties;
-  window.loadCounty = loadCounty;
-  window.startDraw = startDraw;
-  window.cancelDraw = cancelDraw;
-  window.savePolyName = savePolyName;
-  window.closeNameModal = closeNameModal;
-  window.openNameModal = openNameModal;
-  window.openSheetsModal = openSheetsModal;
-  window.closeSheetsModal = closeSheetsModal;
-  window.connectSheets = connectSheets;
-  window.runAssignment = runAssignment;
-  window.exportCSV = exportCSV;
-  window.saveZonesFile = saveZonesFile;
-  window.loadZonesFile = loadZonesFile;
-  window.importZonesFile = importZonesFile;
-  window.shareURL = shareURL;
-  window.copyShareURL = copyShareURL;
-  window.toggleSidebar = toggleSidebar;
-  window.changeMapStyle = changeMapStyle;
-  window.cycleMapStyle = cycleMapStyle;
-  window.deletePoly = deletePoly;
-  window.clearAllZones = clearAllZones;
-
-}); // end DOMContentLoaded
 </script>
 </body>
 </html>
