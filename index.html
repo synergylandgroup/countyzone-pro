@@ -109,7 +109,7 @@
   #shareBanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(10,15,26,0.95);border:1px solid var(--green);color:var(--green);font-family:var(--font);font-size:11px;padding:10px 16px;border-radius:8px;z-index:10;display:none;max-width:90%;text-align:center;cursor:pointer;}
 
   /* Zone label on map */
-  .zone-label{background:rgba(10,15,26,0.88);border:1px solid #1e2d45;color:#e8f0fe;font-family:var(--font);font-size:11px;padding:4px 9px;border-radius:5px;pointer-events:none;white-space:nowrap;text-align:center;line-height:1.4;}
+  .zone-label{background:rgba(10,15,26,0.88);border:1px solid #1e2d45;color:#e8f0fe;font-family:var(--font);font-size:11px;padding:4px 9px;border-radius:5px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;}
   .zone-label .zl-letter{font-size:14px;font-weight:700;color:var(--accent);display:block;}
   .zone-label .zl-name{font-size:10px;display:block;opacity:0.85;}
 
@@ -422,7 +422,7 @@ function _addZoneLayers(poly) {
   if (!map.getLayer(_lineId(id)))
     map.addLayer({ id:_lineId(id), type:'line', source:_srcId(id), paint:{'line-color':color,'line-width':2} });
   map.on('click', _fillId(id), e => { e.preventDefault(); openZoneDescModal(id); });
-  map.on('mouseenter', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseenter', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = 'grab'; });
   map.on('mouseleave', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = ''; });
 }
 function _removeZoneLayers(id) {
@@ -439,7 +439,8 @@ function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-  el.innerHTML = `<span class="zl-letter">${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.innerHTML = `<span class="zl-letter">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.addEventListener('click', () => openZoneDescModal(poly.id));
   const lngs = poly.points.map(p=>p[0]), lats = poly.points.map(p=>p[1]);
   const center = [(Math.min(...lngs)+Math.max(...lngs))/2, (Math.min(...lats)+Math.max(...lats))/2];
   poly.labelMarker = new mapboxgl.Marker({ element:el, anchor:'center' }).setLngLat(center).addTo(map);
