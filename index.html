@@ -10,25 +10,25 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <style>
   :root {
-    --bg:#0a0f1a; --panel:#111827; --panel2:#1a2235; --border:#1e2d45;
-    --accent:#00e5ff; --accent2:#ff6b35; --green:#00ff88; --yellow:#f7c948;
-    --text:#e8f0fe; --muted:#6b7a99; --font:'DM Sans',sans-serif;
+    --bg:#f6f7f9; --panel:#ffffff; --panel2:#eef0f4; --border:#dde1e9;
+    --accent:#5b7fa6; --accent-light:#edf2f8; --accent2:#b94040; --green:#2d8a55; --yellow:#c49b2a;
+    --text:#1a2332; --muted:#6b7d95; --font:'DM Sans',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:grid;grid-template-rows:56px 1fr;grid-template-columns:320px 1fr;overflow:hidden;}
 
   /* HEADER */
-  header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-wrap:nowrap;overflow:hidden;}
+  header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;align-items:center;padding:0 16px;gap:10px;flex-wrap:nowrap;overflow:hidden;}
   .logo{font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.06em;color:var(--accent);white-space:nowrap;}
   .logo span{color:var(--accent2);}
   .hdiv{width:1px;height:22px;background:var(--border);flex-shrink:0;}
   .status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background 0.3s;flex-shrink:0;}
-  .status-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .status-dot.on{background:var(--green);box-shadow:0 0 6px rgba(45,138,85,0.5);}
   .status-text{font-size:11px;color:var(--muted);font-family:var(--font);white-space:nowrap;}
   .header-actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0;}
 
   /* BUTTONS */
-  .btn{padding:6px 11px;border-radius:6px;border:none;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;white-space:nowrap;}
+  .btn{padding:6px 14px;border-radius:20px;border:none;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;white-space:nowrap;}
   .btn-primary{background:var(--accent);color:#000;}
   .btn-primary:hover{background:#33eaff;transform:translateY(-1px);}
   .btn-secondary{background:transparent;color:var(--accent);border:1px solid var(--accent);}
@@ -44,9 +44,11 @@
   aside{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s;}
   .sidebar-section{padding:13px 15px;border-bottom:1px solid var(--border);flex-shrink:0;}
   .section-label{font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
-  select,input[type="text"],textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
+  select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
+  input[type="text"]{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
+  textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:10px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
   select:focus,input:focus,textarea:focus{border-color:var(--accent);}
-  select option{background:#1a2235;}
+  select option{background:var(--panel2);color:var(--text);}
 
   /* STATS BAR */
   .stats-bar{display:flex;flex-shrink:0;}
@@ -57,15 +59,15 @@
 
   /* COLOR SWATCHES */
   .color-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;}
-  .color-swatch{width:26px;height:26px;border-radius:6px;cursor:pointer;border:3px solid transparent;transition:all 0.12s;flex-shrink:0;}
+  .color-swatch{width:26px;height:26px;border-radius:13px;cursor:pointer;border:3px solid transparent;transition:all 0.12s;flex-shrink:0;}
   .color-swatch:hover{transform:scale(1.15);}
   .color-swatch.sel{border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.5);}
 
   /* DRAW BUTTONS */
-  .draw-btn{width:100%;margin-bottom:5px;padding:8px 11px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.15s;}
+  .draw-btn{width:100%;margin-bottom:5px;padding:8px 11px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all 0.15s;}
   .draw-btn:hover{border-color:var(--accent);color:var(--accent);}
   .draw-btn.active{border-color:var(--accent);background:var(--accent);color:#000;}
-  .cancel-btn{width:100%;padding:7px 11px;background:transparent;border:1px solid var(--accent2);color:var(--accent2);border-radius:6px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;display:none;transition:all 0.15s;}
+  .cancel-btn{width:100%;padding:7px 11px;background:transparent;border:1px solid var(--accent2);color:var(--accent2);border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;display:none;transition:all 0.15s;}
   .cancel-btn:hover{background:rgba(255,107,53,0.1);}
   .help-tip{font-size:11px;color:var(--muted);font-family:var(--font);line-height:1.6;margin-top:5px;}
   .zone-file-row{display:flex;gap:6px;margin-top:8px;}
@@ -73,7 +75,7 @@
 
   /* POLYGON LIST */
   .polygons-list{flex:1;overflow-y:auto;padding:9px;}
-  .polygon-item{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.15s;}
+  .polygon-item{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.15s;}
   .polygon-item:hover{border-color:var(--accent);}
   .poly-info{flex:1;min-width:0;}
   .poly-name{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.05em;}
@@ -84,7 +86,7 @@
 
   /* State → County hierarchy */
   .state-group{margin-bottom:5px;}
-  .state-header{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;transition:border-color 0.15s;user-select:none;}
+  .state-header{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;transition:border-color 0.15s;user-select:none;}
   .state-header:hover{border-color:var(--accent);color:var(--accent);}
   .state-header .sg-arrow{font-size:9px;color:var(--muted);transition:transform 0.2s;display:inline-block;}
   .state-header.open .sg-arrow{transform:rotate(90deg);}
@@ -98,25 +100,25 @@
   /* MAP */
   .map-wrap{position:relative;overflow:hidden;}
   #map{width:100%;height:100%;}
-  #drawHint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(10,15,26,0.92);border:1px solid var(--accent);color:var(--accent);font-family:var(--font);font-size:12px;padding:10px 18px;border-radius:8px;z-index:10;display:none;pointer-events:none;white-space:nowrap;}
+  #drawHint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:12px;padding:10px 18px;border-radius:20px;box-shadow:0 2px 12px rgba(91,127,166,0.18);z-index:10;display:none;pointer-events:none;white-space:nowrap;}
   #mapControls{position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;align-items:center;}
-  #styleSelect{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;outline:none;color:var(--text);min-width:120px;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin-bottom:0;width:auto;}
+  #styleSelect{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;outline:none;color:var(--text);min-width:120px;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin-bottom:0;width:auto;}
   #styleSelect:hover{border-color:var(--accent);}
   #styleSelect option{background:#1a2235;}
-  #northBtn{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.5);white-space:nowrap;transition:all 0.15s;opacity:0.6;}
+  #northBtn{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.5);white-space:nowrap;transition:all 0.15s;opacity:0.6;}
   #northBtn:hover{border-color:var(--accent);color:var(--accent);opacity:1;}
   #sidebarToggle{display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;}
-  #shareBanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(10,15,26,0.95);border:1px solid var(--green);color:var(--green);font-family:var(--font);font-size:11px;padding:10px 16px;border-radius:8px;z-index:10;display:none;max-width:90%;text-align:center;cursor:pointer;}
+  #shareBanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.97);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:11px;padding:10px 16px;border-radius:20px;z-index:10;display:none;max-width:90%;text-align:center;cursor:pointer;}
 
   /* Zone label on map */
-  .zone-label{background:rgba(10,15,26,0.88);border:1px solid #1e2d45;color:#e8f0fe;font-family:var(--font);font-size:11px;padding:4px 9px;border-radius:5px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;}
-  .zone-label .zl-letter{font-size:14px;font-weight:700;color:var(--accent);display:block;}
+  .zone-label{background:rgba(255,255,255,0.96);border:1px solid rgba(91,127,166,0.28);color:var(--text);box-shadow:0 2px 10px rgba(91,127,166,0.18);font-family:var(--font);font-size:11px;padding:4px 12px;border-radius:20px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;}
+  .zone-label .zl-letter{font-size:13px;font-weight:700;color:var(--accent);display:block;}
   .zone-label .zl-name{font-size:10px;display:block;opacity:0.85;}
 
   /* MODALS */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.2s;}
   .modal-overlay.open{opacity:1;pointer-events:all;}
-  .modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(10px);transition:transform 0.2s;}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(10px);transition:transform 0.2s;}
   .modal-overlay.open .modal{transform:translateY(0);}
   .modal h2{font-family:var(--font);font-size:13px;font-weight:700;color:var(--accent);margin-bottom:5px;letter-spacing:0.05em;}
   .modal p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
@@ -126,16 +128,16 @@
   /* Zone Editor Modal */
   #zoneEditorModal .modal{width:700px;max-width:98vw;padding:20px 22px;}
   .ze-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-  .ze-badge{background:var(--accent);color:#000;font-weight:800;font-size:13px;padding:3px 11px;border-radius:5px;letter-spacing:0.06em;flex-shrink:0;}
+  .ze-badge{background:var(--accent);color:#fff;font-weight:800;font-size:13px;padding:4px 14px;border-radius:20px;letter-spacing:0.06em;flex-shrink:0;}
   .ze-title{font-size:13px;font-weight:600;color:var(--text);}
   .ze-county{font-size:11px;color:var(--muted);}
   .ze-section-label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
-  .ze-notes{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:12px;outline:none;resize:vertical;min-height:62px;transition:border-color 0.15s;margin-bottom:0;}
+  .ze-notes{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px;font-family:var(--font);font-size:12px;outline:none;resize:vertical;min-height:62px;transition:border-color 0.15s;margin-bottom:0;}
   .ze-notes:focus{border-color:var(--accent);}
-  .ze-table-wrap{overflow-x:auto;margin-top:6px;border:1px solid var(--border);border-radius:8px;}
+  .ze-table-wrap{overflow-x:auto;margin-top:6px;border:1px solid var(--border);border-radius:12px;}
   .ze-table{width:100%;border-collapse:collapse;font-size:12px;}
-  .ze-table thead tr{background:#0d1829;}
-  .ze-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .ze-table thead tr{background:#f0f4f8;}
+  .ze-table th{padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;background:#f0f4f8;}
   .ze-table th:last-child{width:34px;}
   .ze-table tbody tr{border-bottom:1px solid rgba(30,45,69,0.6);}
   .ze-table tbody tr:last-child{border-bottom:none;}
@@ -151,7 +153,7 @@
   .ze-del-row{background:none;border:none;color:var(--border);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:3px;transition:color 0.12s;line-height:1;}
   .ze-del-row:hover{color:var(--accent2);}
   .ze-table-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;flex-wrap:wrap;}
-  .ze-add-btn{background:var(--panel2);border:1px solid var(--border);color:var(--accent);border-radius:5px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.12s;}
+  .ze-add-btn{background:var(--panel2);border:1px solid var(--border);color:var(--accent);border-radius:20px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.12s;}
   .ze-add-btn:hover{border-color:var(--accent);background:rgba(0,229,255,0.07);}
   .ze-cell.num-col::-webkit-inner-spin-button,.ze-cell.num-col::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   .ze-cell.num-col{-moz-appearance:textfield;}
@@ -161,7 +163,7 @@
   .ze-sync-dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;}
 
   /* TOAST */
-  .toast{position:fixed;bottom:22px;right:22px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);padding:11px 16px;border-radius:8px;font-size:12px;font-family:var(--font);z-index:9999;transform:translateX(120%);transition:transform 0.3s;max-width:320px;line-height:1.5;}
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);padding:11px 16px;border-radius:20px;font-size:12px;font-family:var(--font);z-index:9999;transform:translateX(120%);transition:transform 0.3s;max-width:320px;line-height:1.5;}
   .toast.show{transform:translateX(0);}
   .toast.error{border-left-color:var(--accent2);}
   .toast.success{border-left-color:var(--green);}
@@ -278,7 +280,6 @@
       <span class="ze-badge" id="zeBadge">ZONE A</span>
       <div>
         <div class="ze-title" id="zeTitle">Zone Info</div>
-        <div class="ze-county" id="zeCounty"></div>
       </div>
       <button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="closeZoneEditor()">✕ Close</button>
     </div>
@@ -288,12 +289,11 @@
     <textarea class="ze-notes" id="zeNotes" placeholder="Describe this pricing zone — market conditions, land type, local factors..."></textarea>
 
     <!-- Pricing Table -->
-    <div class="ze-section-label" style="margin-top:16px">Polygon Price per Acre Tiers</div>
+    <div class="ze-section-label" style="margin-top:16px">Price per Acre Tiers</div>
     <div class="ze-table-wrap">
       <table class="ze-table">
         <thead>
           <tr>
-            <th style="width:90px">Polygon</th>
             <th>Min Acres</th>
             <th>Max Acres</th>
             <th>Market Value PPA ($)</th>
@@ -650,7 +650,7 @@ function openZoneEditor(polyId) {
   // Header
   document.getElementById('zeBadge').textContent = `ZONE ${p.letter}`;
   document.getElementById('zeTitle').textContent = p.name;
-  document.getElementById('zeCounty').textContent = `${p.countyName || ''} County, ${p.stateAbbr || ''}`;
+
 
   // Notes
   document.getElementById('zeNotes').value = p.description || '';
@@ -658,7 +658,7 @@ function openZoneEditor(polyId) {
   // Pricing rows
   const rows = (p.pricingTiers && p.pricingTiers.length)
     ? p.pricingTiers
-    : [{ polygon: p.letter, minAcres: '', maxAcres: '', pricePerAcre: '' }];
+    : [{ minAcres: '', maxAcres: '', pricePerAcre: '' }];
   zeRenderRows(rows, p.letter);
 
   document.getElementById('zoneEditorModal').classList.add('open');
@@ -694,7 +694,6 @@ function zeAppendRow(tbody, r, defaultLetter, idx) {
   const tr = document.createElement('tr');
   tr.dataset.idx = idx;
   tr.innerHTML = `
-    <td><input class="ze-cell poly-col" value="${r.polygon || defaultLetter}" placeholder="${defaultLetter}" data-col="polygon"></td>
     <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.minAcres}" placeholder="0" data-col="minAcres"></td>
     <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.maxAcres}" placeholder="∞" data-col="maxAcres"></td>
     <td><div style="display:flex;align-items:center;background:transparent;border:1px solid transparent;border-radius:4px;transition:border-color 0.12s" class="ze-price-wrap"><span style="color:var(--muted);font-size:12px;padding-left:7px;flex-shrink:0">$</span><input class="ze-cell price-col" type="number" min="0" step="0.01" value="${r.pricePerAcre}" placeholder="0.00" data-col="pricePerAcre" style="border:none;padding-left:3px;flex:1"></div></td>
@@ -708,7 +707,7 @@ function zeAddRow() {
   const defaultLetter = p ? p.letter : 'A';
   const tbody = document.getElementById('zeTbody');
   const newIdx = tbody.rows.length;
-  zeAppendRow(tbody, { polygon: defaultLetter, minAcres: '', maxAcres: '', pricePerAcre: '' }, defaultLetter, newIdx);
+  zeAppendRow(tbody, { minAcres: '', maxAcres: '', pricePerAcre: '' }, defaultLetter, newIdx);
   // Focus the min acres cell of new row
   tbody.rows[tbody.rows.length - 1].querySelector('[data-col="minAcres"]').focus();
 }
@@ -722,7 +721,7 @@ function zeCollectRows() {
   const rows = [];
   document.querySelectorAll('#zeTbody tr').forEach(tr => {
     const get = col => tr.querySelector(`[data-col="${col}"]`)?.value?.trim() || '';
-    rows.push({ polygon: get('polygon'), minAcres: get('minAcres'), maxAcres: get('maxAcres'), pricePerAcre: get('pricePerAcre') });
+    rows.push({ minAcres: get('minAcres'), maxAcres: get('maxAcres'), pricePerAcre: get('pricePerAcre') });
   });
   return rows;
 }
