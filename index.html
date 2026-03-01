@@ -110,9 +110,13 @@
   #shareBanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.97);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:11px;padding:10px 16px;border-radius:20px;z-index:10;display:none;max-width:90%;text-align:center;cursor:pointer;}
 
   /* Zone label on map */
-  .zone-label{background:rgba(255,255,255,0.96);border:1px solid rgba(91,127,166,0.28);color:var(--text);box-shadow:0 2px 10px rgba(91,127,166,0.18);font-family:var(--font);font-size:11px;padding:4px 12px;border-radius:20px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;}
+  .zone-label{background:rgba(255,255,255,0.96);border:1px solid rgba(91,127,166,0.28);color:var(--text);box-shadow:0 2px 10px rgba(91,127,166,0.18);font-family:var(--font);font-size:11px;padding:4px 12px;border-radius:20px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;user-select:none;}
   .zone-label .zl-letter{font-size:13px;font-weight:700;color:var(--zone-blue);display:block;}
   .zone-label .zl-name{font-size:10px;display:block;opacity:0.85;}
+  /* Cluster badge */
+  .zone-cluster{background:var(--zone-blue);color:#fff;font-family:var(--font);font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;box-shadow:0 2px 10px rgba(44,82,130,0.35);user-select:none;display:flex;align-items:center;gap:6px;line-height:1;}
+  .zone-cluster .zc-count{background:rgba(255,255,255,0.25);border-radius:10px;padding:1px 7px;font-size:12px;font-weight:800;}
+  .zone-cluster:hover{background:#1e3a6e;transform:scale(1.05);transition:all 0.15s;}
 
   /* MODALS */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.2s;}
@@ -434,6 +438,10 @@ map.on('style.load', () => {
   if (_pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
 });
 
+// Re-evaluate clusters on zoom/pan
+map.on('zoomend', () => { if (polygons.length) _refreshClusterLabels(); });
+map.on('moveend', () => { if (polygons.length) _refreshClusterLabels(); });
+
 // ═══════════════════════════════════════════════════════
 // DRAW LAYERS
 // ═══════════════════════════════════════════════════════
@@ -503,19 +511,111 @@ function _restoreAllZoneLayers() { polygons.forEach(p => _addZoneLayers(p)); }
 // ═══════════════════════════════════════════════════════
 // ZONE LABELS
 // ═══════════════════════════════════════════════════════
+// ── Zone label click helpers ──────────────────────────
+const _clickTimers = {};
+function _handleLabelClick(polyId) {
+  // Single click = zoom to county. Double click = open notes.
+  if (_clickTimers[polyId]) {
+    clearTimeout(_clickTimers[polyId]);
+    delete _clickTimers[polyId];
+    openZoneDescModal(polyId); // double-click
+  } else {
+    _clickTimers[polyId] = setTimeout(() => {
+      delete _clickTimers[polyId];
+      const p = polygons.find(p => p.id === polyId);
+      if (p) zoomToZoneAndCounty(p); // single-click
+    }, 260);
+  }
+}
+
+function _polyCenter(poly) {
+  const lngs = poly.points.map(p=>p[0]), lats = poly.points.map(p=>p[1]);
+  return [(Math.min(...lngs)+Math.max(...lngs))/2, (Math.min(...lats)+Math.max(...lats))/2];
+}
+
+// Cluster markers — keyed by "stateAbbr|countyName"
+let _clusterMarkers = {};
+
 function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-  el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue, #2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
-  el.addEventListener('click', () => openZoneDescModal(poly.id));
-  const lngs = poly.points.map(p=>p[0]), lats = poly.points.map(p=>p[1]);
-  const center = [(Math.min(...lngs)+Math.max(...lngs))/2, (Math.min(...lats)+Math.max(...lats))/2];
+  el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.addEventListener('click', () => _handleLabelClick(poly.id));
+  const center = _polyCenter(poly);
   el.style.borderColor = poly.color + '66';
   poly.labelMarker = new mapboxgl.Marker({ element:el, anchor:'center' }).setLngLat(center).addTo(map);
+  _refreshClusterLabels();
 }
+
 function _removeZoneLabel(poly) {
   if (poly.labelMarker) { poly.labelMarker.remove(); poly.labelMarker = null; }
+}
+
+function _refreshClusterLabels() {
+  // Remove existing cluster markers
+  Object.values(_clusterMarkers).forEach(m => m.remove());
+  _clusterMarkers = {};
+
+  // Group polygons by county key
+  const groups = {};
+  polygons.forEach(p => {
+    const key = (p.stateAbbr||'?') + '|' + (p.countyName||'?');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+
+  Object.entries(groups).forEach(([key, polys]) => {
+    if (polys.length < 2) return; // no cluster needed for single zones
+
+    // Calculate centroid of all zone centers in this county
+    const centers = polys.map(_polyCenter);
+    const avgLng = centers.reduce((s,c) => s+c[0], 0) / centers.length;
+    const avgLat = centers.reduce((s,c) => s+c[1], 0) / centers.length;
+
+    // Check pixel spread — only cluster if labels would overlap (within ~80px)
+    const pixels = centers.map(c => map.project(c));
+    let allClose = true;
+    for (let i = 0; i < pixels.length; i++) {
+      for (let j = i+1; j < pixels.length; j++) {
+        const dist = Math.hypot(pixels[i].x-pixels[j].x, pixels[i].y-pixels[j].y);
+        if (dist > 80) { allClose = false; break; }
+      }
+      if (!allClose) break;
+    }
+
+    if (!allClose) return; // spread out enough, show individual labels normally
+
+    // Hide individual labels, show cluster badge
+    polys.forEach(p => { if (p.labelMarker) p.labelMarker.getElement().style.display = 'none'; });
+
+    const el = document.createElement('div');
+    el.className = 'zone-cluster';
+    const county = polys[0].countyName || 'County';
+    const st = polys[0].stateAbbr || '';
+    el.innerHTML = `${county}, ${st} <span class="zc-count">${polys.length}</span>`;
+    el.title = polys.map(p => 'ZONE '+p.letter).join(' · ') + ' — click to zoom';
+
+    el.addEventListener('click', () => {
+      // Zoom to fit all zones in this county
+      const b = new mapboxgl.LngLatBounds();
+      polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
+      map.fitBounds(b, { padding: 80 });
+    });
+
+    const marker = new mapboxgl.Marker({ element:el, anchor:'center' })
+      .setLngLat([avgLng, avgLat]).addTo(map);
+    _clusterMarkers[key] = marker;
+  });
+}
+
+function _showAllLabels() {
+  // Restore individual label visibility
+  polygons.forEach(p => {
+    if (p.labelMarker) p.labelMarker.getElement().style.display = '';
+  });
+  Object.values(_clusterMarkers).forEach(m => m.remove());
+  _clusterMarkers = {};
 }
 
 // ═══════════════════════════════════════════════════════
