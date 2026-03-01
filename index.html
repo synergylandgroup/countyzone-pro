@@ -123,7 +123,40 @@
   .modal label{font-size:11px;color:var(--muted);font-family:var(--font);display:block;margin-bottom:4px;margin-top:10px;}
   .modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;}
   .gs-help{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
-  #zoneDescModal textarea{resize:vertical;min-height:80px;margin-bottom:0;}
+  /* Zone Editor Modal */
+  #zoneEditorModal .modal{width:700px;max-width:98vw;padding:20px 22px;}
+  .ze-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .ze-badge{background:var(--accent);color:#000;font-weight:800;font-size:13px;padding:3px 11px;border-radius:5px;letter-spacing:0.06em;flex-shrink:0;}
+  .ze-title{font-size:13px;font-weight:600;color:var(--text);}
+  .ze-county{font-size:11px;color:var(--muted);}
+  .ze-section-label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
+  .ze-notes{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:12px;outline:none;resize:vertical;min-height:62px;transition:border-color 0.15s;margin-bottom:0;}
+  .ze-notes:focus{border-color:var(--accent);}
+  .ze-table-wrap{overflow-x:auto;margin-top:6px;border:1px solid var(--border);border-radius:8px;}
+  .ze-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .ze-table thead tr{background:#0d1829;}
+  .ze-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .ze-table th:last-child{width:34px;}
+  .ze-table tbody tr{border-bottom:1px solid rgba(30,45,69,0.6);}
+  .ze-table tbody tr:last-child{border-bottom:none;}
+  .ze-table tbody tr:nth-child(even){background:rgba(26,34,53,0.4);}
+  .ze-table tbody tr:hover{background:rgba(0,229,255,0.04);}
+  .ze-table td{padding:3px 4px;}
+  .ze-table td:last-child{text-align:center;padding:3px 6px;}
+  .ze-cell{width:100%;background:transparent;border:1px solid transparent;color:var(--text);padding:5px 7px;border-radius:4px;font-family:var(--font);font-size:12px;outline:none;transition:all 0.12s;}
+  .ze-cell:focus{background:var(--panel2);border-color:var(--accent);}
+  .ze-cell.poly-col{color:var(--accent);font-weight:700;text-align:center;}
+  .ze-cell.num-col{text-align:right;}
+  .ze-cell.price-col{text-align:right;color:var(--green);}
+  .ze-del-row{background:none;border:none;color:var(--border);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:3px;transition:color 0.12s;line-height:1;}
+  .ze-del-row:hover{color:var(--accent2);}
+  .ze-table-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;flex-wrap:wrap;}
+  .ze-add-btn{background:var(--panel2);border:1px solid var(--border);color:var(--accent);border-radius:5px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.12s;}
+  .ze-add-btn:hover{border-color:var(--accent);background:rgba(0,229,255,0.07);}
+  .ze-all-toggle{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;}
+  .ze-all-toggle input{accent-color:var(--accent);cursor:pointer;}
+  .ze-sync-note{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .ze-sync-dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;}
 
   /* TOAST */
   .toast{position:fixed;bottom:22px;right:22px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);padding:11px 16px;border-radius:8px;font-size:12px;font-family:var(--font);z-index:9999;transform:translateX(120%);transition:transform 0.3s;max-width:320px;line-height:1.5;}
@@ -235,16 +268,56 @@
   </div>
 </div>
 
-<!-- Zone Notes Modal -->
-<div class="modal-overlay" id="zoneDescModal">
+<!-- Zone Pricing Editor Modal -->
+<div class="modal-overlay" id="zoneEditorModal">
   <div class="modal">
-    <h2 id="zoneDescTitle">ZONE INFO</h2>
-    <p id="zoneDescSubtitle" style="margin-bottom:8px;font-size:12px"></p>
-    <label>PRICING ZONE NOTES</label>
-    <textarea id="zoneDescInput" placeholder="Enter custom notes or pricing zone description..."></textarea>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeZoneDescModal()">CANCEL</button>
-      <button class="btn btn-primary" onclick="saveZoneDesc()">SAVE NOTES</button>
+    <!-- Header -->
+    <div class="ze-header">
+      <span class="ze-badge" id="zeBadge">ZONE A</span>
+      <div>
+        <div class="ze-title" id="zeTitle">Zone Info</div>
+        <div class="ze-county" id="zeCounty"></div>
+      </div>
+      <button class="btn btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="closeZoneEditor()">✕ Close</button>
+    </div>
+
+    <!-- General Notes -->
+    <div class="ze-section-label">General Notes</div>
+    <textarea class="ze-notes" id="zeNotes" placeholder="Describe this pricing zone — market conditions, land type, local factors..."></textarea>
+
+    <!-- Pricing Table -->
+    <div class="ze-section-label" style="margin-top:16px">Polygon Price per Acre Tiers</div>
+    <div class="ze-table-wrap">
+      <table class="ze-table">
+        <thead>
+          <tr>
+            <th style="width:90px">Polygon</th>
+            <th>Min Acres</th>
+            <th>Max Acres</th>
+            <th>Price Per Acre ($)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="zeTbody"></tbody>
+      </table>
+    </div>
+    <div class="ze-table-foot">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="ze-add-btn" onclick="zeAddRow()">+ Add Row</button>
+        <label class="ze-all-toggle">
+          <input type="checkbox" id="zeAllToggle" onchange="zeToggleAll(this.checked)">
+          Set all rows to ALL
+        </label>
+      </div>
+      <div class="ze-sync-note">
+        <span class="ze-sync-dot"></span>
+        Sheets sync — available after Netlify deploy
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeZoneEditor()">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveZoneEditor()">💾 SAVE ZONE DATA</button>
     </div>
   </div>
 </div>
@@ -569,30 +642,109 @@ function createPolygonAuto(pts, color) {
 }
 
 // ═══════════════════════════════════════════════════════
-// ZONE DESCRIPTION MODAL
+// ZONE PRICING EDITOR
 // ═══════════════════════════════════════════════════════
-function openZoneDescModal(polyId) {
+function openZoneDescModal(polyId) { openZoneEditor(polyId); } // alias for existing callers
+
+function openZoneEditor(polyId) {
   const p = polygons.find(p => p.id === polyId);
   if (!p) return;
   _editingDescId = polyId;
-  document.getElementById('zoneDescTitle').textContent = `ZONE ${p.letter} — ${p.name}`;
-  document.getElementById('zoneDescSubtitle').textContent = 'Add pricing zone notes or a description below.';
-  document.getElementById('zoneDescInput').value = p.description || '';
-  document.getElementById('zoneDescModal').classList.add('open');
-  setTimeout(() => document.getElementById('zoneDescInput').focus(), 100);
+
+  // Header
+  document.getElementById('zeBadge').textContent = `ZONE ${p.letter}`;
+  document.getElementById('zeTitle').textContent = p.name;
+  document.getElementById('zeCounty').textContent = `${p.countyName || ''} County, ${p.stateAbbr || ''}`;
+
+  // Notes
+  document.getElementById('zeNotes').value = p.description || '';
+
+  // Pricing rows
+  const rows = (p.pricingTiers && p.pricingTiers.length)
+    ? p.pricingTiers
+    : [{ polygon: p.letter, minAcres: '', maxAcres: '', pricePerAcre: '' }];
+  zeRenderRows(rows, p.letter);
+
+  // ALL toggle state
+  const allRows = rows.every(r => r.polygon === 'ALL');
+  document.getElementById('zeAllToggle').checked = allRows;
+
+  document.getElementById('zoneEditorModal').classList.add('open');
+  setTimeout(() => document.getElementById('zeNotes').focus(), 80);
 }
-function closeZoneDescModal() {
-  document.getElementById('zoneDescModal').classList.remove('open');
+
+function closeZoneEditor() {
+  document.getElementById('zoneEditorModal').classList.remove('open');
   _editingDescId = null;
 }
-function saveZoneDesc() {
+
+function saveZoneEditor() {
   if (!_editingDescId) return;
   const p = polygons.find(p => p.id === _editingDescId);
-  if (p) { p.description = document.getElementById('zoneDescInput').value.trim(); persistZones(); showToast('Notes saved', 'success'); }
-  closeZoneDescModal();
+  if (!p) return;
+
+  p.description = document.getElementById('zeNotes').value.trim();
+  p.pricingTiers = zeCollectRows();
+
+  persistZones();
+  closeZoneEditor();
+  showToast(`Zone ${p.letter} saved`, 'success');
 }
-document.getElementById('zoneDescModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeZoneDescModal(); });
-document.getElementById('zoneDescInput').addEventListener('keydown', e => { if (e.key === 'Escape') closeZoneDescModal(); });
+
+// ── Table helpers ──────────────────────────────────────
+function zeRenderRows(rows, defaultLetter) {
+  const tbody = document.getElementById('zeTbody');
+  tbody.innerHTML = '';
+  rows.forEach((r, i) => zeAppendRow(tbody, r, defaultLetter, i));
+}
+
+function zeAppendRow(tbody, r, defaultLetter, idx) {
+  const tr = document.createElement('tr');
+  tr.dataset.idx = idx;
+  tr.innerHTML = `
+    <td><input class="ze-cell poly-col" value="${r.polygon || defaultLetter}" placeholder="${defaultLetter}" data-col="polygon"></td>
+    <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.minAcres}" placeholder="0" data-col="minAcres"></td>
+    <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.maxAcres}" placeholder="∞" data-col="maxAcres"></td>
+    <td><input class="ze-cell price-col" type="number" min="0" step="0.01" value="${r.pricePerAcre}" placeholder="0.00" data-col="pricePerAcre"></td>
+    <td><button class="ze-del-row" onclick="zeDeleteRow(this)" title="Remove row">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function zeAddRow() {
+  const p = polygons.find(p => p.id === _editingDescId);
+  const defaultLetter = p ? p.letter : 'A';
+  const allChecked = document.getElementById('zeAllToggle').checked;
+  const tbody = document.getElementById('zeTbody');
+  const newIdx = tbody.rows.length;
+  zeAppendRow(tbody, { polygon: allChecked ? 'ALL' : defaultLetter, minAcres: '', maxAcres: '', pricePerAcre: '' }, defaultLetter, newIdx);
+  // Focus the min acres cell of new row
+  tbody.rows[tbody.rows.length - 1].querySelector('[data-col="minAcres"]').focus();
+}
+
+function zeDeleteRow(btn) {
+  const tr = btn.closest('tr');
+  tr.remove();
+}
+
+function zeToggleAll(checked) {
+  const p = polygons.find(p => p.id === _editingDescId);
+  const defaultLetter = p ? p.letter : 'A';
+  document.querySelectorAll('#zeTbody .poly-col').forEach(inp => {
+    inp.value = checked ? 'ALL' : defaultLetter;
+  });
+}
+
+function zeCollectRows() {
+  const rows = [];
+  document.querySelectorAll('#zeTbody tr').forEach(tr => {
+    const get = col => tr.querySelector(`[data-col="${col}"]`)?.value?.trim() || '';
+    rows.push({ polygon: get('polygon'), minAcres: get('minAcres'), maxAcres: get('maxAcres'), pricePerAcre: get('pricePerAcre') });
+  });
+  return rows;
+}
+
+document.getElementById('zoneEditorModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeZoneEditor(); });
 
 // ═══════════════════════════════════════════════════════
 // RENDER POLYGON LIST — Full State Name → County hierarchy
@@ -772,7 +924,7 @@ function clearAllZones() {
 // ═══════════════════════════════════════════════════════
 function _polyToJSON(p) {
   return { id:p.id, name:p.name, letter:p.letter||'', stateAbbr:p.stateAbbr||'', countyName:p.countyName||'',
-           color:p.color, points:p.points, description:p.description||'', isRect:!!p._isRect, bounds:p._bounds||null };
+           color:p.color, points:p.points, description:p.description||'', pricingTiers:p.pricingTiers||[], isRect:!!p._isRect, bounds:p._bounds||null };
 }
 function persistZones() {
   try { localStorage.setItem('geofence_zones', JSON.stringify(polygons.map(_polyToJSON))); } catch(e) {}
@@ -788,7 +940,7 @@ function restoreZones() {
 }
 function _loadZone(d) {
   const poly = { id:d.id, name:d.name, letter:d.letter||'', stateAbbr:d.stateAbbr||'', countyName:d.countyName||'',
-    color:d.color, points:d.points, description:d.description||'', labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
+    color:d.color, points:d.points, description:d.description||'', pricingTiers:d.pricingTiers||[], labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
   // Back-compat: derive stateAbbr/countyName from name if missing
   if (!poly.stateAbbr || !poly.countyName) {
     const m = poly.name.match(/^(.+) County,\s*([A-Z]{2})$/);
