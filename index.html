@@ -147,14 +147,16 @@
   .ze-cell:focus{background:var(--panel2);border-color:var(--accent);}
   .ze-cell.poly-col{color:var(--accent);font-weight:700;text-align:center;}
   .ze-cell.num-col{text-align:right;}
-  .ze-cell.price-col{text-align:right;color:var(--green);}
+  .ze-cell.price-col{text-align:right;color:var(--text);}
   .ze-del-row{background:none;border:none;color:var(--border);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:3px;transition:color 0.12s;line-height:1;}
   .ze-del-row:hover{color:var(--accent2);}
   .ze-table-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;flex-wrap:wrap;}
   .ze-add-btn{background:var(--panel2);border:1px solid var(--border);color:var(--accent);border-radius:5px;padding:5px 11px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.12s;}
   .ze-add-btn:hover{border-color:var(--accent);background:rgba(0,229,255,0.07);}
-  .ze-all-toggle{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;}
-  .ze-all-toggle input{accent-color:var(--accent);cursor:pointer;}
+  .ze-cell.num-col::-webkit-inner-spin-button,.ze-cell.num-col::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  .ze-cell.num-col{-moz-appearance:textfield;}
+  .ze-cell.price-col::-webkit-inner-spin-button,.ze-cell.price-col::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  .ze-cell.price-col{-moz-appearance:textfield;}
   .ze-sync-note{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
   .ze-sync-dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;}
 
@@ -294,7 +296,7 @@
             <th style="width:90px">Polygon</th>
             <th>Min Acres</th>
             <th>Max Acres</th>
-            <th>Price Per Acre ($)</th>
+            <th>Market Value PPA ($)</th>
             <th></th>
           </tr>
         </thead>
@@ -302,13 +304,7 @@
       </table>
     </div>
     <div class="ze-table-foot">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="ze-add-btn" onclick="zeAddRow()">+ Add Row</button>
-        <label class="ze-all-toggle">
-          <input type="checkbox" id="zeAllToggle" onchange="zeToggleAll(this.checked)">
-          Set all rows to ALL
-        </label>
-      </div>
+      <button class="ze-add-btn" onclick="zeAddRow()">+ Add Row</button>
       <div class="ze-sync-note">
         <span class="ze-sync-dot"></span>
         Sheets sync — available after Netlify deploy
@@ -665,10 +661,6 @@ function openZoneEditor(polyId) {
     : [{ polygon: p.letter, minAcres: '', maxAcres: '', pricePerAcre: '' }];
   zeRenderRows(rows, p.letter);
 
-  // ALL toggle state
-  const allRows = rows.every(r => r.polygon === 'ALL');
-  document.getElementById('zeAllToggle').checked = allRows;
-
   document.getElementById('zoneEditorModal').classList.add('open');
   setTimeout(() => document.getElementById('zeNotes').focus(), 80);
 }
@@ -705,7 +697,7 @@ function zeAppendRow(tbody, r, defaultLetter, idx) {
     <td><input class="ze-cell poly-col" value="${r.polygon || defaultLetter}" placeholder="${defaultLetter}" data-col="polygon"></td>
     <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.minAcres}" placeholder="0" data-col="minAcres"></td>
     <td><input class="ze-cell num-col" type="number" min="0" step="any" value="${r.maxAcres}" placeholder="∞" data-col="maxAcres"></td>
-    <td><input class="ze-cell price-col" type="number" min="0" step="0.01" value="${r.pricePerAcre}" placeholder="0.00" data-col="pricePerAcre"></td>
+    <td><div style="display:flex;align-items:center;background:transparent;border:1px solid transparent;border-radius:4px;transition:border-color 0.12s" class="ze-price-wrap"><span style="color:var(--muted);font-size:12px;padding-left:7px;flex-shrink:0">$</span><input class="ze-cell price-col" type="number" min="0" step="0.01" value="${r.pricePerAcre}" placeholder="0.00" data-col="pricePerAcre" style="border:none;padding-left:3px;flex:1"></div></td>
     <td><button class="ze-del-row" onclick="zeDeleteRow(this)" title="Remove row">✕</button></td>
   `;
   tbody.appendChild(tr);
@@ -714,10 +706,9 @@ function zeAppendRow(tbody, r, defaultLetter, idx) {
 function zeAddRow() {
   const p = polygons.find(p => p.id === _editingDescId);
   const defaultLetter = p ? p.letter : 'A';
-  const allChecked = document.getElementById('zeAllToggle').checked;
   const tbody = document.getElementById('zeTbody');
   const newIdx = tbody.rows.length;
-  zeAppendRow(tbody, { polygon: allChecked ? 'ALL' : defaultLetter, minAcres: '', maxAcres: '', pricePerAcre: '' }, defaultLetter, newIdx);
+  zeAppendRow(tbody, { polygon: defaultLetter, minAcres: '', maxAcres: '', pricePerAcre: '' }, defaultLetter, newIdx);
   // Focus the min acres cell of new row
   tbody.rows[tbody.rows.length - 1].querySelector('[data-col="minAcres"]').focus();
 }
@@ -725,14 +716,6 @@ function zeAddRow() {
 function zeDeleteRow(btn) {
   const tr = btn.closest('tr');
   tr.remove();
-}
-
-function zeToggleAll(checked) {
-  const p = polygons.find(p => p.id === _editingDescId);
-  const defaultLetter = p ? p.letter : 'A';
-  document.querySelectorAll('#zeTbody .poly-col').forEach(inp => {
-    inp.value = checked ? 'ALL' : defaultLetter;
-  });
 }
 
 function zeCollectRows() {
