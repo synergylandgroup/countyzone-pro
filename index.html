@@ -13,7 +13,7 @@
     --bg: #0a0f1a; --panel: #111827; --panel2: #1a2235; --border: #1e2d45;
     --accent: #00e5ff; --accent2: #ff6b35; --green: #00ff88; --yellow: #f7c948;
     --text: #e8f0fe; --muted: #6b7a99;
-    --font-mono: 'Space Mono', monospace; --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Sans', sans-serif; --font-sans: 'DM Sans', sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-sans); height: 100vh; display: grid; grid-template-rows: 56px 1fr; grid-template-columns: 320px 1fr; overflow: hidden; }
@@ -85,18 +85,44 @@
   .map-wrap { position: relative; overflow: hidden; }
   #map { width: 100%; height: 100%; }
   #drawHint { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.92); border: 1px solid var(--accent); color: var(--accent); font-family: var(--font-mono); font-size: 12px; padding: 10px 18px; border-radius: 8px; z-index: 10; display: none; pointer-events: none; white-space: nowrap; }
-  #styleSelect { position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: 2px solid rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 12px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); outline: none; color: #333; min-width: 130px; margin: 0; }
-  #styleSelect:hover { border-color: rgba(0,0,0,0.5); }
+  #mapControls { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; gap: 6px; align-items: center; }
+  #styleSelect { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer; outline: none; color: var(--text); min-width: 120px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  #styleSelect:hover { border-color: var(--accent); }
+  #styleSelect option { background: #1a2235; }
+  #northBtn { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: var(--font-sans); font-size: 13px; cursor: pointer; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.5); white-space: nowrap; transition: all 0.15s; }
+  #northBtn:hover { border-color: var(--accent); color: var(--accent); }
   #sidebarToggle { display: none; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 16px; cursor: pointer; }
   #shareBanner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(10,15,26,0.95); border: 1px solid var(--green); color: var(--green); font-family: var(--font-mono); font-size: 11px; padding: 10px 16px; border-radius: 8px; z-index: 10; display: none; max-width: 90%; text-align: center; cursor: pointer; }
   #shareBanner:hover { background: rgba(0,255,136,0.08); }
 
   /* Zone labels */
-  .zone-label { background: rgba(10,15,26,0.88); border: 1px solid #1e2d45; color: #e8f0fe; font-family: 'Space Mono', monospace; font-size: 11px; padding: 3px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+  .zone-label { background: rgba(10,15,26,0.88); border: 1px solid #1e2d45; color: #e8f0fe; font-family: var(--font-sans); font-size: 11px; padding: 4px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; line-height: 1.4; text-align: center; }
+  .zone-label .zl-letter { font-size: 13px; font-weight: 700; color: var(--accent); display: block; }
+  .zone-label .zl-name { font-size: 11px; display: block; }
 
-  /* Rectangle corner handles */
-  .rect-handle { width: 12px; height: 12px; background: #fff; border: 2px solid #00e5ff; border-radius: 3px; cursor: grab; box-shadow: 0 1px 4px rgba(0,0,0,0.5); transition: background 0.1s; }
-  .rect-handle:hover, .rect-handle:active { background: #00e5ff; cursor: grabbing; }
+  /* Zone click popup */
+  .zone-popup { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; min-width: 220px; font-family: var(--font-sans); color: var(--text); }
+  .zone-popup .zp-letter { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .zone-popup .zp-name { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .zone-popup textarea { width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 5px; font-family: var(--font-sans); font-size: 12px; resize: vertical; min-height: 70px; outline: none; margin-top: 4px; }
+  .zone-popup textarea:focus { border-color: var(--accent); }
+  .zone-popup .zp-save { margin-top: 8px; padding: 5px 12px; background: var(--accent); color: #000; border: none; border-radius: 5px; font-family: var(--font-sans); font-size: 11px; font-weight: 700; cursor: pointer; }
+  .zone-popup label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* State → County hierarchy */
+  .state-group { margin-bottom: 4px; }
+  .state-header { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; cursor: pointer; display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12px; transition: border-color 0.15s; user-select: none; }
+  .state-header:hover { border-color: var(--accent); }
+  .state-header .sg-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+  .state-header.open .sg-arrow { transform: rotate(90deg); }
+  .state-counties { display: none; padding-left: 10px; margin-top: 3px; }
+  .state-counties.open { display: block; }
+  .county-group { margin-bottom: 3px; }
+  .county-header { padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); border-left: 2px solid var(--border); margin-left: 4px; transition: color 0.15s; user-select: none; }
+  .county-header:hover { color: var(--text); border-left-color: var(--accent); }
+  .county-polys { padding-left: 8px; }
+
+  
 
   /* ── MODALS ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -165,9 +191,8 @@
   <div class="sidebar-section">
     <div class="section-label">Draw Zones</div>
     <button class="draw-btn" id="btnPolygon" onclick="startDraw('polygon')"><span style="font-size:14px">⬡</span> Freeform Polygon</button>
-    <button class="draw-btn" id="btnRectangle" onclick="startDraw('rectangle')"><span style="font-size:14px">⬜</span> Rectangle</button>
     <button class="cancel-btn" id="btnCancel" onclick="cancelDraw()">✕ Cancel Drawing</button>
-    <div class="help-tip" id="drawHelp">Select a mode above, then draw on the map.</div>
+    <div class="help-tip" id="drawHelp">Click Freeform Polygon to start drawing.</div>
     <div class="section-label" style="margin-top:10px">Zone Color</div>
     <div class="color-row" id="colorRow"></div>
     <div class="zone-file-row">
@@ -189,7 +214,10 @@
 
 <div class="map-wrap">
   <div id="map"></div>
-  <select id="styleSelect" onchange="changeMapStyle(this.value)" title="Switch map style"></select>
+  <div id="mapControls">
+    <button id="northBtn" onclick="resetNorth()" title="Reset to North">⬆ North</button>
+    <select id="styleSelect" onchange="changeMapStyle(this.value)" title="Switch map style"></select>
+  </div>
   <div id="drawHint"></div>
   <div id="shareBanner" onclick="copyShareURL()">🔗 Click to copy shareable link with your current zones</div>
 </div>
@@ -217,16 +245,16 @@
   </div>
 </div>
 
-<!-- Zone Name Modal -->
-<div class="modal-overlay" id="nameModal">
+<!-- Zone Description Modal (popup when clicking existing zone) -->
+<div class="modal-overlay" id="zoneDescModal">
   <div class="modal">
-    <h2>NAME THIS ZONE</h2>
-    <p>Give this geofence zone a name. This label will appear in your exported spreadsheet.</p>
-    <label>ZONE NAME</label>
-    <input type="text" id="polyNameInput" placeholder="e.g. North District, Zone A, Territory 1">
+    <h2 id="zoneDescTitle">ZONE INFO</h2>
+    <p style="margin-bottom:8px" id="zoneDescSubtitle"></p>
+    <label>PRICING ZONE NOTES</label>
+    <textarea id="zoneDescInput" placeholder="Enter custom notes or pricing zone description..."></textarea>
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="closeNameModal()">CANCEL</button>
-      <button class="btn btn-primary" onclick="savePolyName()">SAVE ZONE</button>
+      <button class="btn btn-ghost" onclick="closeZoneDescModal()">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveZoneDesc()">SAVE NOTES</button>
     </div>
   </div>
 </div>
@@ -249,6 +277,7 @@ let polygons = [];
 let properties = [];
 let sheetConfig = {};
 let countySourceId = null;
+let _pendingCountyGeoJSON = null;
 
 // ── Draw state ──────────────────────────────────────────────
 let drawMode   = null;   // null | 'polygon' | 'rectangle'
@@ -278,9 +307,11 @@ const MAP_STYLES = [
   { id: 'mapbox://styles/mapbox/light-v11',             label: '☁️ Light'     },
   { id: 'mapbox://styles/mapbox/dark-v11',              label: '🌙 Dark'      },
 ];
+const HYBRID_IDX = 3; // default: Hybrid
 const styleEl = document.getElementById('styleSelect');
 MAP_STYLES.forEach((s, i) => {
   const o = document.createElement('option'); o.value = i; o.textContent = s.label;
+  if (i === HYBRID_IDX) o.selected = true;
   styleEl.appendChild(o);
 });
 
@@ -289,7 +320,7 @@ MAP_STYLES.forEach((s, i) => {
 // ═══════════════════════════════════════════════════════════
 const map = new mapboxgl.Map({
   container: 'map',
-  style: MAP_STYLES[0].id,
+  style: MAP_STYLES[HYBRID_IDX].id,
   center: [-98.35, 39.5],
   zoom: 4,
   doubleClickZoom: false,
@@ -298,14 +329,29 @@ const map = new mapboxgl.Map({
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120 }), 'bottom-left');
 
+function resetNorth() {
+  map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
+}
+map.on('rotate', () => {
+  const b = map.getBearing();
+  document.getElementById('northBtn').style.opacity = Math.abs(b) > 1 ? '1' : '0.6';
+});
+
 // Re-add all sources/layers every time style is swapped
 map.on('style.load', () => {
   _initDrawLayers();
   _restoreAllZoneLayers();
-  countySourceId = null; // county layers are lost on style swap; user must reload
+  // Restore zone labels
+  polygons.forEach(p => { if (!p.labelMarker) _addZoneLabel(p); });
+  // Restore county boundary
+  if (_pendingCountyGeoJSON) {
+    _readdCountyLayer(_pendingCountyGeoJSON);
+  }
 });
 
 function changeMapStyle(idx) {
+  // Remove label markers before style change — they'll be recreated on style.load
+  polygons.forEach(p => _removeZoneLabel(p));
   map.setStyle(MAP_STYLES[parseInt(idx)].id);
 }
 
@@ -382,7 +428,7 @@ function _addZoneLayers(poly) {
     map.addLayer({ id:_lineId(id), type:'line', source:_srcId(id),
       paint:{ 'line-color': color, 'line-width': 2 } });
   }
-  map.on('click', _fillId(id), e => { e.preventDefault(); openNameModal(id); });
+  map.on('click', _fillId(id), e => { e.preventDefault(); openZoneDescModal(id); });
   map.on('mouseenter', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', _fillId(id), () => { if (!drawMode) map.getCanvas().style.cursor = ''; });
 }
@@ -414,7 +460,10 @@ function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-  el.textContent = poly.name;
+  // name format: "Orange County, CA [A]" → extract parts
+  const letter = poly.letter || '';
+  const displayName = poly.name || '';
+  el.innerHTML = `<span class="zl-letter">${letter}</span><span class="zl-name">${displayName}</span>`;
   poly.labelMarker = new mapboxgl.Marker({ element: el, anchor:'center' })
     .setLngLat(_polyCenter(poly.points)).addTo(map);
 }
@@ -446,10 +495,9 @@ function cancelDraw() {
   map.boxZoom.enable();
   map.getCanvas().style.cursor = '';
   document.getElementById('btnPolygon').classList.remove('active');
-  document.getElementById('btnRectangle').classList.remove('active');
   document.getElementById('btnCancel').style.display = 'none';
   document.getElementById('drawHint').style.display = 'none';
-  document.getElementById('drawHelp').textContent = 'Select a mode above, then draw on the map.';
+  document.getElementById('drawHelp').textContent = 'Click Freeform Polygon to start drawing.';
 }
 
 function startDraw(mode) {
@@ -458,17 +506,11 @@ function startDraw(mode) {
   polyState = mode === 'polygon' ? 'drawing' : 'idle';
   map.getCanvas().style.cursor = 'crosshair';
   document.getElementById('btnPolygon').classList.toggle('active', mode === 'polygon');
-  document.getElementById('btnRectangle').classList.toggle('active', mode === 'rectangle');
   document.getElementById('btnCancel').style.display = 'block';
   const hint = document.getElementById('drawHint');
   hint.style.display = 'block';
-  if (mode === 'polygon') {
-    hint.textContent = '📍 Click to add vertices — click first point to close';
-    document.getElementById('drawHelp').textContent = 'Click to place vertices. Click the first point to close the polygon.';
-  } else {
-    hint.textContent = '⬜ Click and drag to draw a rectangle';
-    document.getElementById('drawHelp').textContent = 'Click and drag on the map to draw a rectangular zone.';
-  }
+  hint.textContent = '📍 Click to add vertices — click first point to close';
+  document.getElementById('drawHelp').textContent = 'Click to place vertices. Click the first point to close the polygon.';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -587,10 +629,9 @@ map.on('mouseup', function(e) {
   // Exit draw mode
   drawMode = null;
   map.getCanvas().style.cursor = '';
-  document.getElementById('btnRectangle').classList.remove('active');
   document.getElementById('btnCancel').style.display = 'none';
   document.getElementById('drawHint').style.display = 'none';
-  document.getElementById('drawHelp').textContent = 'Select a mode above, then draw on the map.';
+  document.getElementById('drawHelp').textContent = 'Click Freeform Polygon to start drawing.';
 
   _pendingRectBounds = bounds;
   openNameModalForNew(pts, color);
@@ -663,97 +704,173 @@ function _oppositeCorner(key, b) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// NAME MODAL
+// LETTER MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function _getNextLetter() {
+  const used = new Set(polygons.map(p => p.letter).filter(Boolean));
+  for (let i = 0; i < 26; i++) {
+    const l = String.fromCharCode(65 + i);
+    if (!used.has(l)) return l;
+  }
+  return null;
+}
+function _buildAutoName(pts, color) {
+  // Try to get county/state from current sidebar selections
+  const stateAbbr = document.getElementById('stateSelect').value || '';
+  const countyVal = document.getElementById('countySelect').value || '';
+  if (countyVal && stateAbbr) return `${countyVal} County, ${stateAbbr}`;
+  return 'Zone';
+}
+
+// ═══════════════════════════════════════════════════════════
+// POLYGON CREATION (no modal — auto-named)
 // ═══════════════════════════════════════════════════════════
 function openNameModalForNew(pts, color) {
-  pendingPts = pts; pendingColor = color; editingPolyId = null;
-  document.getElementById('polyNameInput').value = '';
-  document.getElementById('nameModal').classList.add('open');
-  setTimeout(() => document.getElementById('polyNameInput').focus(), 100);
-}
-function openNameModal(polyId) {
-  editingPolyId = polyId; pendingPts = null;
-  const p = polygons.find(p => p.id === polyId);
-  document.getElementById('polyNameInput').value = p ? p.name : '';
-  document.getElementById('nameModal').classList.add('open');
-  setTimeout(() => document.getElementById('polyNameInput').focus(), 100);
-}
-function closeNameModal() {
-  document.getElementById('nameModal').classList.remove('open');
-  pendingPts = null; editingPolyId = null; _pendingRectBounds = null;
-}
-function savePolyName() {
-  const name = document.getElementById('polyNameInput').value.trim();
-  if (!name) { showToast('Please enter a zone name', 'error'); return; }
-
-  if (editingPolyId) {
-    const p = polygons.find(p => p.id === editingPolyId);
-    if (p) { p.name = name; _removeZoneLabel(p); _addZoneLabel(p); }
-  } else if (pendingPts) {
-    const poly = {
-      id: 'poly_' + Date.now(), name, color: pendingColor,
-      points: pendingPts, labelMarker: null, handles: [],
-      _isRect: false, _bounds: null,
-    };
-    polygons.push(poly);
-    _addZoneLayers(poly);
-    _addZoneLabel(poly);
-    if (_pendingRectBounds) {
-      _addRectHandles(poly, _pendingRectBounds);
-      _pendingRectBounds = null;
-    }
-  }
-
-  closeNameModal();
+  const letter = _getNextLetter();
+  if (!letter) { showToast('Maximum 26 zones reached (A–Z). Delete a zone to add more.', 'error'); return; }
+  const name = _buildAutoName(pts, color);
+  const poly = {
+    id: 'poly_' + Date.now(), name, letter, color,
+    points: pts, labelMarker: null, handles: [],
+    _isRect: false, _bounds: null, description: '',
+  };
+  polygons.push(poly);
+  _addZoneLayers(poly);
+  _addZoneLabel(poly);
   renderPolygonList();
   persistZones();
-  showToast(`Zone "${name}" saved`, 'success');
+  showToast(`Zone ${letter} — ${name} created`, 'success');
 }
-document.getElementById('polyNameInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') savePolyName();
-  if (e.key === 'Escape') closeNameModal();
-});
 
 // ═══════════════════════════════════════════════════════════
-// POLYGON LIST
+// ZONE DESCRIPTION POPUP (click on polygon)
+// ═══════════════════════════════════════════════════════════
+let _editingDescId = null;
+function openZoneDescModal(polyId) {
+  const p = polygons.find(p => p.id === polyId);
+  if (!p) return;
+  _editingDescId = polyId;
+  document.getElementById('zoneDescTitle').textContent = `ZONE ${p.letter} — ${p.name}`;
+  document.getElementById('zoneDescSubtitle').textContent = 'Add pricing zone notes or description below.';
+  document.getElementById('zoneDescInput').value = p.description || '';
+  document.getElementById('zoneDescModal').classList.add('open');
+  setTimeout(() => document.getElementById('zoneDescInput').focus(), 100);
+}
+function closeZoneDescModal() {
+  document.getElementById('zoneDescModal').classList.remove('open');
+  _editingDescId = null;
+}
+function saveZoneDesc() {
+  if (!_editingDescId) return;
+  const p = polygons.find(p => p.id === _editingDescId);
+  if (p) {
+    p.description = document.getElementById('zoneDescInput').value.trim();
+    persistZones();
+    showToast('Notes saved', 'success');
+  }
+  closeZoneDescModal();
+}
+document.getElementById('zoneDescModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeZoneDescModal(); });
+document.getElementById('zoneDescInput').addEventListener('keydown', e => { if (e.key === 'Escape') closeZoneDescModal(); });
+
+// ═══════════════════════════════════════════════════════════
+// POLYGON LIST — State → County hierarchy
 // ═══════════════════════════════════════════════════════════
 function renderPolygonList() {
   document.getElementById('zoneCount').textContent = polygons.length;
   document.getElementById('statPolygons').textContent = polygons.length;
   const list = document.getElementById('polygonsList');
   if (!polygons.length) {
-    list.innerHTML = '<div class="empty-state">No zones yet.<br>Draw on the map or load<br>a saved zones file.</div>';
+    list.innerHTML = '<div class="empty-state">No zones yet.<br>Draw on the map to<br>create pricing zones.</div>';
     return;
   }
-  list.innerHTML = '';
+
+  // Group by state → county
+  const byState = {};
   polygons.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'polygon-item';
-    div.innerHTML = `
-      <div class="poly-color" style="background:${p.color}"></div>
-      <div class="poly-info">
-        <div class="poly-name">${p.name}</div>
-        <div class="poly-count">${p.propCount !== undefined ? p.propCount + ' properties' : 'not yet assigned'}</div>
-      </div>
-      <button class="poly-btn" title="Rename" onclick="openNameModal('${p.id}');event.stopPropagation()">✎</button>
-      <button class="poly-btn" title="Delete" onclick="deletePoly('${p.id}');event.stopPropagation()">✕</button>
-    `;
-    div.onclick = () => {
-      const b = new mapboxgl.LngLatBounds();
-      p.points.forEach(pt => b.extend(pt));
-      map.fitBounds(b, { padding:60 });
+    // name format: "Orange County, CA"
+    const parts = p.name.match(/^(.+),\s*([A-Z]{2})$/);
+    const state = parts ? parts[2] : 'Unknown';
+    const county = parts ? parts[1] : p.name;
+    if (!byState[state]) byState[state] = {};
+    if (!byState[state][county]) byState[state][county] = [];
+    byState[state][county].push(p);
+  });
+
+  list.innerHTML = '';
+  Object.keys(byState).sort().forEach(state => {
+    const stateDiv = document.createElement('div');
+    stateDiv.className = 'state-group';
+    const hdr = document.createElement('div');
+    hdr.className = 'state-header open';
+    hdr.innerHTML = `<span class="sg-arrow">▶</span><span>${state}</span>`;
+    hdr.onclick = () => {
+      hdr.classList.toggle('open');
+      countiesDiv.classList.toggle('open');
     };
-    list.appendChild(div);
+    const countiesDiv = document.createElement('div');
+    countiesDiv.className = 'state-counties open';
+
+    Object.keys(byState[state]).sort().forEach(county => {
+      const cGroup = document.createElement('div');
+      cGroup.className = 'county-group';
+      const cHdr = document.createElement('div');
+      cHdr.className = 'county-header';
+      cHdr.innerHTML = `<span>${county}</span><span style="margin-left:auto;font-size:10px">${byState[state][county].length} zone${byState[state][county].length>1?'s':''}</span>
+        <button class="poly-btn" title="Delete county" style="font-size:11px" onclick="deleteCounty('${state}','${county}',event)">🗑</button>`;
+      const polyDiv = document.createElement('div');
+      polyDiv.className = 'county-polys';
+
+      byState[state][county].forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'polygon-item';
+        div.innerHTML = `
+          <div class="poly-color" style="background:${p.color}"></div>
+          <div class="poly-info">
+            <div class="poly-name"><strong style="color:var(--accent)">${p.letter}</strong> — ${p.name}</div>
+            <div class="poly-count">${p.propCount !== undefined ? p.propCount + ' properties' : 'not yet assigned'}</div>
+          </div>
+          <button class="poly-btn" title="Notes" onclick="openZoneDescModal('${p.id}');event.stopPropagation()">📝</button>
+          <button class="poly-btn" title="Delete" onclick="deletePoly('${p.id}');event.stopPropagation()">✕</button>
+        `;
+        div.onclick = () => {
+          const b = new mapboxgl.LngLatBounds();
+          p.points.forEach(pt => b.extend(pt));
+          map.fitBounds(b, { padding:60 });
+        };
+        polyDiv.appendChild(div);
+      });
+      cGroup.appendChild(cHdr);
+      cGroup.appendChild(polyDiv);
+      countiesDiv.appendChild(cGroup);
+    });
+
+    stateDiv.appendChild(hdr);
+    stateDiv.appendChild(countiesDiv);
+    list.appendChild(stateDiv);
   });
 }
 
-function deletePoly(id) {
+function deletePoly(id, skipConfirm) {
   const i = polygons.findIndex(p => p.id === id);
   if (i === -1) return;
   const p = polygons[i];
+  if (!skipConfirm && !confirm(`Are you sure you want to delete Zone ${p.letter} (${p.name})?\n\nThis action cannot be undone.`)) return;
   _removeZoneLabel(p); _removeRectHandles(p); _removeZoneLayers(id);
   properties.forEach(prop => { if (prop.zone === p.name) { _markerColor(prop.marker, '#f7c948'); prop.zone = null; } });
   polygons.splice(i, 1);
+  renderPolygonList(); persistZones();
+}
+
+function deleteCounty(state, county, evt) {
+  evt && evt.stopPropagation();
+  const toDelete = polygons.filter(p => {
+    const parts = p.name.match(/^(.+),\s*([A-Z]{2})$/);
+    return parts && parts[2] === state && parts[1] === county;
+  });
+  if (!toDelete.length) return;
+  if (!confirm(`Are you sure you want to delete all ${toDelete.length} zone${toDelete.length>1?'s':''} in ${county}, ${state}?\n\nThis action cannot be undone.`)) return;
+  toDelete.forEach(p => deletePoly(p.id, true));
   renderPolygonList(); persistZones();
 }
 
@@ -773,7 +890,7 @@ function clearAllZones() {
 function persistZones() {
   try {
     localStorage.setItem('geofence_zones', JSON.stringify(
-      polygons.map(p => ({ id:p.id, name:p.name, color:p.color, points:p.points, isRect:!!p._isRect, bounds:p._bounds||null }))
+      polygons.map(p => ({ id:p.id, name:p.name, letter:p.letter||'', color:p.color, points:p.points, description:p.description||'', isRect:!!p._isRect, bounds:p._bounds||null }))
     ));
   } catch(e) {}
 }
@@ -788,8 +905,8 @@ function restoreZones() {
   } catch(e) {}
 }
 function _loadZone(d) {
-  const poly = { id:d.id, name:d.name, color:d.color, points:d.points,
-                 labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
+  const poly = { id:d.id, name:d.name, letter:d.letter||'', color:d.color, points:d.points,
+                 description:d.description||'', labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
   polygons.push(poly);
   _addZoneLayers(poly);
   _addZoneLabel(poly);
@@ -802,8 +919,8 @@ function _loadZone(d) {
 // ═══════════════════════════════════════════════════════════
 function saveZonesFile() {
   if (!polygons.length) { showToast('No zones to save', 'error'); return; }
-  const data = { version:1, saved:new Date().toISOString(),
-    zones: polygons.map(p => ({ id:p.id, name:p.name, color:p.color, points:p.points, isRect:!!p._isRect, bounds:p._bounds||null })) };
+  const data = { version:2, saved:new Date().toISOString(),
+    zones: polygons.map(p => ({ id:p.id, name:p.name, letter:p.letter||'', color:p.color, points:p.points, description:p.description||'', isRect:!!p._isRect, bounds:p._bounds||null })) };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
   a.download = `geofence-zones-${new Date().toISOString().slice(0,10)}.json`;
@@ -929,7 +1046,7 @@ function parseAndLoad(csv) {
     const location = [city, st, zip].filter(Boolean).join(', ');
 
     const popup = new mapboxgl.Popup({ offset:8 }).setHTML(
-      `<div style="font-family:'Space Mono',monospace;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
+      `<div style="font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
         <strong style="color:#00e5ff">APN: ${apn}</strong><br>
         ${location ? `<span>${location}</span><br>` : ''}
         <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
@@ -1071,6 +1188,18 @@ function _removeCountyLayer() {
   countySourceId = null;
 }
 
+function _readdCountyLayer(geojson) {
+  if (countySourceId) {
+    if (map.getLayer(countySourceId+'-fill')) map.removeLayer(countySourceId+'-fill');
+    if (map.getLayer(countySourceId+'-line')) map.removeLayer(countySourceId+'-line');
+    if (map.getSource(countySourceId))        map.removeSource(countySourceId);
+  }
+  countySourceId = 'county-' + Date.now();
+  map.addSource(countySourceId, { type:'geojson', data:geojson });
+  map.addLayer({ id:countySourceId+'-fill', type:'fill', source:countySourceId, paint:{'fill-color':'#000000','fill-opacity':0.15} });
+  map.addLayer({ id:countySourceId+'-line', type:'line', source:countySourceId, paint:{'line-color':'#6600cc','line-width':3} });
+}
+
 async function loadCounty() {
   const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
   saveAppState(); if (!abbr||!county) return;
@@ -1081,10 +1210,8 @@ async function loadCounty() {
     const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(county)}'&outFields=*&f=geojson`;
     const geojson = await (await fetch(url)).json();
     if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
-    countySourceId = 'county-'+Date.now();
-    map.addSource(countySourceId, { type:'geojson', data:geojson });
-    map.addLayer({ id:countySourceId+'-fill', type:'fill', source:countySourceId, paint:{'fill-color':'#000000','fill-opacity':0.15} });
-    map.addLayer({ id:countySourceId+'-line', type:'line', source:countySourceId, paint:{'line-color':'#6600cc','line-width':3} });
+    _pendingCountyGeoJSON = geojson;
+    _readdCountyLayer(geojson);
     const bounds = new mapboxgl.LngLatBounds();
     geojson.features.forEach(f => {
       const coords = f.geometry.type==='Polygon' ? f.geometry.coordinates.flat()
@@ -1116,7 +1243,6 @@ function loadAppState() {
   try { return JSON.parse(localStorage.getItem('geofence_app_state')); } catch(e) { return null; } 
 }
 document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeSheetsModal(); });
-document.getElementById('nameModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeNameModal(); });
 
 // ═══════════════════════════════════════════════════════════
 // INIT
