@@ -918,7 +918,7 @@ function parseAndLoad(csv) {
   rows.slice(1).forEach((row, i) => {
     const lat = parseFloat(row[latIdx]), lng = parseFloat(row[lngIdx]);
     if (isNaN(lat)||isNaN(lng)) return;
-    const apn  = idx(colAPN)!==−1  ? row[idx(colAPN)]  : `Row ${i+2}`;
+    const apn  = idx(colAPN)!==-1  ? row[idx(colAPN)]  : `Row ${i+2}`;
     const city = idx(colCity)!==-1 ? row[idx(colCity)] : '';
     const st   = idx(colState)!==-1? row[idx(colState)]: '';
     const zip  = idx(colZip)!==-1  ? row[idx(colZip)]  : '';
