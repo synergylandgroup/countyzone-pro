@@ -4,23 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CountyZone Pro</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <style>
   :root {
     --bg:#f6f7f9; --panel:#ffffff; --panel2:#eef0f4; --border:#dde1e9;
-    --accent:#5b7fa6; --accent-light:#edf2f8; --accent2:#b94040; --green:#2d8a55; --yellow:#c49b2a;
-    --text:#1a2332; --muted:#6b7d95; --font:'DM Sans',sans-serif;
+    --accent:#5b7fa6; --zone-blue:#2c5282; --accent-light:#edf2f8; --accent2:#b94040; --green:#2d8a55; --yellow:#c49b2a;
+    --text:#1a2332; --muted:#6b7d95; --font:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
+  html{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:grid;grid-template-rows:56px 1fr;grid-template-columns:320px 1fr;overflow:hidden;}
 
   /* HEADER */
   header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;align-items:center;padding:0 16px;gap:10px;flex-wrap:nowrap;overflow:hidden;}
   .logo{font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.06em;color:var(--text);white-space:nowrap;}
-  .logo span{color:var(--accent);}
+  .logo span{color:var(--zone-blue);}
   .hdiv{width:1px;height:22px;background:var(--border);flex-shrink:0;}
   .status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background 0.3s;flex-shrink:0;}
   .status-dot.on{background:var(--green);box-shadow:0 0 6px rgba(45,138,85,0.5);}
@@ -44,7 +43,7 @@
   aside{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s;}
   .sidebar-section{padding:13px 15px;border-bottom:1px solid var(--border);flex-shrink:0;}
   .section-label{font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
-  select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
+  select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 36px 7px 14px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7d95' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
   input[type="text"]{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
   textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:10px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
   select:focus,input:focus,textarea:focus{border-color:var(--accent);}
@@ -78,7 +77,7 @@
   .polygon-item{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.15s;}
   .polygon-item:hover{border-color:var(--accent);}
   .poly-info{flex:1;min-width:0;}
-  .poly-name{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.05em;}
+  .poly-name{font-size:12px;font-weight:700;color:var(--zone-blue);letter-spacing:0.05em;}
   .poly-count{font-size:10px;color:var(--muted);}
   .poly-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:3px;transition:color 0.12s;}
   .poly-btn:hover{color:var(--accent2);}
@@ -102,9 +101,9 @@
   #map{width:100%;height:100%;}
   #drawHint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:12px;padding:10px 18px;border-radius:20px;box-shadow:0 2px 12px rgba(91,127,166,0.18);z-index:10;display:none;pointer-events:none;white-space:nowrap;}
   #mapControls{position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;align-items:center;}
-  #styleSelect{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;outline:none;color:var(--text);min-width:120px;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin-bottom:0;width:auto;}
+  #styleSelect{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 34px 6px 12px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;outline:none;color:var(--text);min-width:130px;box-shadow:0 2px 8px rgba(0,0,0,0.12);margin-bottom:0;width:auto;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7d95' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
   #styleSelect:hover{border-color:var(--accent);}
-  #styleSelect option{background:#1a2235;}
+  #styleSelect option{background:var(--panel);color:var(--text);}
   #northBtn{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.5);white-space:nowrap;transition:all 0.15s;opacity:0.6;}
   #northBtn:hover{border-color:var(--accent);color:var(--accent);opacity:1;}
   #sidebarToggle{display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;}
@@ -112,7 +111,7 @@
 
   /* Zone label on map */
   .zone-label{background:rgba(255,255,255,0.96);border:1px solid rgba(91,127,166,0.28);color:var(--text);box-shadow:0 2px 10px rgba(91,127,166,0.18);font-family:var(--font);font-size:11px;padding:4px 12px;border-radius:20px;pointer-events:auto;cursor:pointer;white-space:nowrap;text-align:center;line-height:1.4;}
-  .zone-label .zl-letter{font-size:13px;font-weight:700;color:var(--accent);display:block;}
+  .zone-label .zl-letter{font-size:13px;font-weight:700;color:var(--zone-blue);display:block;}
   .zone-label .zl-name{font-size:10px;display:block;opacity:0.85;}
 
   /* MODALS */
@@ -128,7 +127,7 @@
   /* Zone Editor Modal */
   #zoneEditorModal .modal{width:700px;max-width:98vw;padding:20px 22px;}
   .ze-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-  .ze-badge{background:var(--accent);color:#fff;font-weight:800;font-size:13px;padding:4px 14px;border-radius:20px;letter-spacing:0.06em;flex-shrink:0;}
+  .ze-badge{background:var(--zone-blue);color:#fff;font-weight:800;font-size:13px;padding:4px 14px;border-radius:20px;letter-spacing:0.06em;flex-shrink:0;}
   .ze-title{font-size:13px;font-weight:600;color:var(--text);}
   .ze-county{font-size:11px;color:var(--muted);}
   .ze-section-label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
@@ -508,7 +507,7 @@ function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-  el.innerHTML = `<span class="zl-letter" style="color:${poly.color}">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue, #2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
   el.addEventListener('click', () => openZoneDescModal(poly.id));
   const lngs = poly.points.map(p=>p[0]), lats = poly.points.map(p=>p[1]);
   const center = [(Math.min(...lngs)+Math.max(...lngs))/2, (Math.min(...lats)+Math.max(...lats))/2];
@@ -1060,7 +1059,7 @@ function parseAndLoad(csv) {
     const zip  = idx(colZip)!==-1  ? row[idx(colZip)]  : '';
     const loc  = [city,st,zip].filter(Boolean).join(', ');
     const popup = new mapboxgl.Popup({ offset:8 }).setHTML(
-      `<div style="font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
+      `<div style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
         <strong style="color:var(--accent)">APN: ${apn}</strong><br>
         ${loc?`<span>${loc}</span><br>`:''}
         <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
