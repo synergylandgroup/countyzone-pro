@@ -344,10 +344,7 @@
     </div>
     <div class="ze-table-foot">
       <button class="ze-add-btn" onclick="zeAddRow()">+ Add Row</button>
-      <div class="ze-sync-note">
-        <span class="ze-sync-dot"></span>
-        Sheets sync — available after Netlify deploy
-      </div>
+      <button class="ze-add-btn" onclick="syncAllPricingToSheet()" style="background:#edf2f8;color:var(--zone-blue);border-color:var(--zone-blue)" title="Write all zone pricing to Google Sheet">↑ Sync All to Sheet</button>
     </div>
 
     <div class="modal-actions" style="margin-top:14px">
@@ -843,29 +840,55 @@ function saveZoneEditor() {
   const label = p.allZones ? `Zone ${p.letter} saved (ALL zones pricing)` : `Zone ${p.letter} saved`;
   showToast(label, 'success');
 
-  // Write pricing to sheet if connected — use freshest per-county config
-  const _pSa = document.getElementById('stateSelect').value;
-  const _pCn = document.getElementById('countySelect').value;
-  const _pCfg = (_pSa && _pCn) ? (_getSheetConfig(_pSa, _pCn) || sheetConfig) : sheetConfig;
-  if (_pCfg && _pCfg.sheetId && p.pricingTiers && p.pricingTiers.length) {
-    const zoneLabel = p.allZones ? 'ALL' : p.letter;
-    const tiers = p.pricingTiers
-      .filter(t => t.pricePerAcre !== '' && t.pricePerAcre !== undefined)
-      .map(t => ({ zone: zoneLabel, minAcres: t.minAcres, maxAcres: t.maxAcres, pricePerAcre: t.pricePerAcre }));
-    if (tiers.length) {
-      fetch('/.netlify/functions/sheets-write-pricing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sheetId: _pCfg.sheetId,
-          tiers,
-        }),
-      }).then(r => r.json()).then(data => {
-        if (data.success) showToast(`Pricing synced to sheet ✓`, 'success');
-        else showToast('Pricing saved locally — sheet sync failed: ' + data.error, 'error');
-      }).catch(e => showToast('Pricing saved locally — sheet sync failed: ' + e.message, 'error'));
-    }
-  }
+}
+
+// ── Sync ALL zones pricing to sheet in one batch ──
+async function syncAllPricingToSheet() {
+  const sa = document.getElementById('stateSelect').value;
+  const cn = document.getElementById('countySelect').value;
+  const cfg = (sa && cn) ? (_getSheetConfig(sa, cn) || sheetConfig) : sheetConfig;
+  if (!cfg || !cfg.sheetId) { showToast('Connect a Google Sheet first', 'error'); return; }
+
+  // Collect tiers from ALL polygons for this county
+  // Filter to only polygons matching current state+county
+  const countyPolys = polygons.filter(p => {
+    return !p.stateAbbr || (p.stateAbbr === sa && p.countyName === cn);
+  });
+
+  if (!countyPolys.length) { showToast('No zones with pricing to sync', 'error'); return; }
+
+  const allTiers = [];
+  countyPolys
+    .slice() // don't mutate
+    .sort((a, b) => (a.letter || '').localeCompare(b.letter || '')) // A→Z
+    .forEach(poly => {
+      const zoneLabel = poly.allZones ? 'ALL' : poly.letter;
+      (poly.pricingTiers || [])
+        .filter(t => t.pricePerAcre !== '' && t.pricePerAcre !== undefined && t.pricePerAcre !== null)
+        .sort((a, b) => parseFloat(a.minAcres || 0) - parseFloat(b.minAcres || 0)) // low→high acreage
+        .forEach(t => {
+          allTiers.push({
+            zone: zoneLabel,
+            minAcres: t.minAcres,
+            maxAcres: t.maxAcres,
+            pricePerAcre: t.pricePerAcre,
+          });
+        });
+    });
+
+  if (!allTiers.length) { showToast('No pricing tiers to sync — add pricing to your zones first', 'error'); return; }
+
+  showToast('Syncing all pricing to sheet...', 'info');
+  try {
+    const r = await fetch('/.netlify/functions/sheets-write-pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId: cfg.sheetId, tiers: allTiers }),
+    });
+    const data = await r.json();
+    if (data.success) showToast(`${allTiers.length} pricing rows synced to sheet ✓`, 'success');
+    else showToast('Sync failed: ' + data.error, 'error');
+  } catch(e) { showToast('Sync failed: ' + e.message, 'error'); }
 }
 
 // ── Table helpers ──────────────────────────────────────
@@ -1332,6 +1355,17 @@ async function connectSheets() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
   if (!sa || !cn) { showToast('Please select a State and County first', 'error'); return; }
+  // Check if this sheet ID is already used by a different county
+  const existingKey = Object.entries(sheetConfigs).find(([key, cfg]) => {
+    return cfg.sheetId === sheetId && key !== _countyKey(sa, cn);
+  });
+  if (existingKey) {
+    const [existKey] = existingKey;
+    const [existState, existCounty] = existKey.split('|');
+    showToast(`This sheet is already connected to ${existCounty} County, ${existState}`, 'error');
+    return;
+  }
+
   sheetConfig = {
     sheetId,
     stateAbbr:  sa,
@@ -1364,15 +1398,31 @@ async function connectSheets() {
 function loadPropertiesFromFunction(props) {
   properties.forEach(p => { if (p.marker) p.marker.remove(); });
   properties = [];
+  let skipped = 0;
   props.forEach(prop => {
-    const { lat, lng, apn, address, city, state, zip, acreage, zone, rowIndex } = prop;
-    const loc = [address, city, state, zip].filter(Boolean).join(', ');
+    let { lat, lng, apn, address, city, state, zip, acreage, zone, rowIndex } = prop;
+
+    // Validate coordinates — US properties should be roughly within these bounds
+    // Lat: 18–72, Lng: -180 to -65
+    // Auto-swap if they appear reversed
+    if (lat < -180 && lng > 18) { [lat, lng] = [lng, lat]; } // obvious swap
+    if (lat < 18 || lat > 72 || lng < -180 || lng > -65) { skipped++; return; } // out of US bounds
+
     const el = document.createElement('div');
     el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#f7c948;border:1.5px solid rgba(0,0,0,0.4);cursor:pointer;z-index:1;position:relative;';
-    const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+    const popup = new mapboxgl.Popup({ offset: 8 }).setHTML(
+      `<div style="font-family:-apple-system,sans-serif;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
+        <strong style="color:var(--accent)">APN: ${apn || '—'}</strong><br>
+        ${address ? `<span>${address}</span><br>` : ''}
+        ${city || state ? `<span>${[city,state,zip].filter(Boolean).join(', ')}</span><br>` : ''}
+        <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+      </div>`
+    );
+    const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
     properties.push({ lat, lng, apn, address, city, state, zip, acreage, zone: zone || null, rowIndex, marker });
   });
   document.getElementById('statProps').textContent = properties.length;
+  if (skipped) showToast(`${skipped} properties skipped — coordinates out of range`, 'info');
   // Show pin toggle button now that pins are loaded
   const toggleBtn = document.getElementById('btnTogglePins');
   if (toggleBtn) toggleBtn.style.display = '';
