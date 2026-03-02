@@ -1402,11 +1402,12 @@ function loadPropertiesFromFunction(props) {
   props.forEach(prop => {
     let { lat, lng, apn, address, city, state, zip, acreage, zone, rowIndex } = prop;
 
-    // Validate coordinates — US properties should be roughly within these bounds
-    // Lat: 18–72, Lng: -180 to -65
-    // Auto-swap if they appear reversed
-    if (lat < -180 && lng > 18) { [lat, lng] = [lng, lat]; } // obvious swap
-    if (lat < 18 || lat > 72 || lng < -180 || lng > -65) { skipped++; return; } // out of US bounds
+    // Validate coordinates — auto-fix common issues
+    // Auto-swap if clearly reversed (lat should be positive for US, lng negative)
+    if (lat < -90 && lng > 0) { [lat, lng] = [lng, lat]; }
+    else if (lng > 0 && lat > 0 && lat < 90) { lng = -lng; } // lng missing negative sign
+    // US bounds check: lat 18–72, lng -180 to -60
+    if (lat < 18 || lat > 72 || lng < -180 || lng > -60) { skipped++; return; }
 
     const el = document.createElement('div');
     el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#f7c948;border:1.5px solid rgba(0,0,0,0.4);cursor:pointer;z-index:1;position:relative;';
@@ -1487,9 +1488,10 @@ async function runAssignment() {
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
-      showToast(`${assigned} zones written to sheet ✓`, 'success');
+      showToast(`${assignments.length} zone assignments written to sheet ✓`, 'success');
     } catch(e) {
-      showToast('Assignment saved locally — sheet write failed: ' + e.message, 'error');
+      showToast('Zone write failed: ' + e.message, 'error');
+      console.error('sheets-write-zones error:', e);
     }
   } else {
     showToast(`${assigned} of ${properties.length} properties assigned`, 'success');
@@ -1683,11 +1685,23 @@ map.on('load', () => {
     loadCounties().then(() => {
       if (appState.county) {
         document.getElementById('countySelect').value = appState.county;
-        // Restore active sheetConfig for this county
+        // Restore active sheetConfig for this county and reload properties
         const saved = _getSheetConfig(appState.state, appState.county);
         if (saved) {
           sheetConfig = saved;
           setConnected(true);
+          // Auto-reload properties from sheet
+          showToast('Reconnecting to sheet...', 'info');
+          fetch('/.netlify/functions/sheets-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetId: saved.sheetId, sheetName: saved.sheetName || 'LI Raw Dataset' }),
+          }).then(r => r.json()).then(data => {
+            if (data.properties && data.properties.length) {
+              loadPropertiesFromFunction(data.properties);
+              showToast(`Reconnected — ${data.properties.length} properties loaded`, 'success');
+            }
+          }).catch(() => {}); // silent fail on restore — user can reconnect manually
         }
       }
     });
