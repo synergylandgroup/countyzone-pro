@@ -435,8 +435,8 @@ map.on('style.load', () => {
   _initDrawLayers();
   _restoreAllZoneLayers();
   polygons.forEach(p => _addZoneLabel(p));
-  _rebuildAllLabels();
   if (_pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
+  _rebuildAllLabels();
 });
 
 // Re-evaluate clusters on zoom/pan
@@ -541,7 +541,8 @@ function _addZoneLabel(poly) {
   // Start hidden — _refreshLabelMode will show/hide based on zoom
   el.style.display = 'none';
   poly.labelMarker = new mapboxgl.Marker({ element:el, anchor:'center' }).setLngLat(center).addTo(map);
-  _refreshLabelMode();
+  // Do NOT call _refreshLabelMode here — caller is responsible for calling _rebuildAllLabels
+  // after all zones are added to avoid thrashing
 }
 
 function _removeZoneLabel(poly) {
@@ -1011,6 +1012,7 @@ function restoreZones() {
     const data = JSON.parse(raw);
     data.forEach(d => _loadZone(d));
     renderPolygonList();
+    _rebuildAllLabels();
     if (data.length) showToast(`Restored ${data.length} zone${data.length>1?'s':''}`, 'success');
   } catch(e) {}
 }
@@ -1054,6 +1056,7 @@ function importZonesFile(e) {
       polygons = [];
       zones.forEach(d => _loadZone(d));
       renderPolygonList(); persistZones();
+      _rebuildAllLabels();
       showToast(`Loaded ${zones.length} zone${zones.length!==1?'s':''}`, 'success');
       if (polygons.length) {
         const b = new mapboxgl.LngLatBounds();
@@ -1090,6 +1093,7 @@ function loadZonesFromURL() {
     if (!enc) return false;
     JSON.parse(decodeURIComponent(atob(enc))).forEach(d => _loadZone(d));
     renderPolygonList();
+    _rebuildAllLabels();
     if (polygons.length) {
       const b = new mapboxgl.LngLatBounds();
       polygons.forEach(p => p.points.forEach(pt => b.extend(pt)));
@@ -1353,6 +1357,8 @@ map.on('load', () => {
   _initDrawLayers();
   const fromURL = loadZonesFromURL();
   if (!fromURL) restoreZones();
+  // Safety net: rebuild after a tick to ensure map is fully ready
+  setTimeout(() => { if (polygons.length) _rebuildAllLabels(); }, 150);
   try {
     const cfg = JSON.parse(localStorage.getItem('geofence_sheet_config'));
     if (cfg) {
