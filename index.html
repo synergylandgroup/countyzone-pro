@@ -841,6 +841,27 @@ function saveZoneEditor() {
   closeZoneEditor();
   const label = p.allZones ? `Zone ${p.letter} saved (ALL zones pricing)` : `Zone ${p.letter} saved`;
   showToast(label, 'success');
+
+  // Write pricing to sheet if connected
+  if (sheetConfig.sheetId && p.pricingTiers && p.pricingTiers.length) {
+    const zoneLabel = p.allZones ? 'ALL' : p.letter;
+    const tiers = p.pricingTiers
+      .filter(t => t.pricePerAcre !== '' && t.pricePerAcre !== undefined)
+      .map(t => ({ zone: zoneLabel, minAcres: t.minAcres, maxAcres: t.maxAcres, pricePerAcre: t.pricePerAcre }));
+    if (tiers.length) {
+      fetch('/.netlify/functions/sheets-write-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheetId: sheetConfig.sheetId,
+          tiers,
+        }),
+      }).then(r => r.json()).then(data => {
+        if (data.success) showToast(`Pricing synced to sheet ✓`, 'success');
+        else showToast('Pricing saved locally — sheet sync failed: ' + data.error, 'error');
+      }).catch(e => showToast('Pricing saved locally — sheet sync failed: ' + e.message, 'error'));
+    }
+  }
 }
 
 // ── Table helpers ──────────────────────────────────────
@@ -1324,47 +1345,30 @@ async function connectSheets() {
   _setSheetConfig(sa, cn, sheetConfig);
   showToast('Connecting to Google Sheets...', 'info');
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetConfig.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetConfig.sheetName)}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    parseAndLoad(await r.text());
+    const r = await fetch('/.netlify/functions/sheets-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId: sheetConfig.sheetId, sheetName: sheetConfig.sheetName }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
+    loadPropertiesFromFunction(data.properties);
     setConnected(true); closeSheetsModal();
-    showToast(`Connected: ${cn} County, ${sa}`, 'success');
-  } catch(e) { showToast('Connection failed — check sharing settings', 'error'); }
+    showToast(`Connected: ${cn} County, ${sa} — ${data.properties.length} properties loaded`, 'success');
+  } catch(e) { showToast('Connection failed: ' + e.message, 'error'); }
 }
-function parseAndLoad(csv) {
-  const rows = parseCSV(csv);
-  if (rows.length < 2) { showToast('Sheet appears empty', 'error'); return; }
-  const headers = rows[0];
-  const { colLat, colLng, colAPN, colCity, colState, colZip } = sheetConfig;
-  const idx = n => headers.indexOf(n);
-  const latIdx = idx(colLat), lngIdx = idx(colLng);
-  if (latIdx===-1||lngIdx===-1) { showToast(`Columns "${colLat}" or "${colLng}" not found.`, 'error'); return; }
+function loadPropertiesFromFunction(props) {
   properties.forEach(p => { if (p.marker) p.marker.remove(); });
-  properties = []; let loaded = 0;
-  rows.slice(1).forEach((row, i) => {
-    const lat = parseFloat(row[latIdx]), lng = parseFloat(row[lngIdx]);
-    if (isNaN(lat)||isNaN(lng)) return;
-    const apn  = idx(colAPN)!==-1  ? row[idx(colAPN)]  : `Row ${i+2}`;
-    const city = idx(colCity)!==-1 ? row[idx(colCity)] : '';
-    const st   = idx(colState)!==-1? row[idx(colState)]: '';
-    const zip  = idx(colZip)!==-1  ? row[idx(colZip)]  : '';
-    const loc  = [city,st,zip].filter(Boolean).join(', ');
-    const popup = new mapboxgl.Popup({ offset:8 }).setHTML(
-      `<div style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:12px;line-height:1.9;background:#111827;color:#e8f0fe;padding:6px 10px;border-radius:6px">
-        <strong style="color:var(--accent)">APN: ${apn}</strong><br>
-        ${loc?`<span>${loc}</span><br>`:''}
-        <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
-      </div>`
-    );
+  properties = [];
+  props.forEach(prop => {
+    const { lat, lng, apn, address, city, state, zip, acreage, zone, rowIndex } = prop;
+    const loc = [address, city, state, zip].filter(Boolean).join(', ');
     const el = document.createElement('div');
     el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#f7c948;border:1.5px solid rgba(0,0,0,0.4);cursor:pointer;';
-    const marker = new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).setPopup(popup).addTo(map);
-    properties.push({ row, headers, lat, lng, apn, city, state:st, zip, marker, zone:null });
-    loaded++;
+    const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+    properties.push({ lat, lng, apn, address, city, state, zip, acreage, zone: zone || null, rowIndex, marker });
   });
-  document.getElementById('statProps').textContent = loaded;
-  showToast(`Loaded ${loaded} properties`, 'success');
+  document.getElementById('statProps').textContent = properties.length;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1378,25 +1382,54 @@ function pointInPolygon(lat, lng, pts) {
   }
   return inside;
 }
-function runAssignment() {
+async function runAssignment() {
   if (!polygons.length) { showToast('Draw at least one zone first', 'error'); return; }
   if (!properties.length) { showToast('No properties loaded. Connect Google Sheets first.', 'error'); return; }
   polygons.forEach(p => p.propCount = 0);
   let assigned = 0;
+
+  // Step 1 — compute assignments in memory
+  const assignments = [];
   properties.forEach(prop => {
     prop.zone = null;
     for (const poly of polygons) {
       if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
-        prop.zone = poly.name; poly.propCount++;
+        prop.zone = poly.letter; // write letter only (A, B, C...)
+        poly.propCount++;
         _markerColor(prop.marker, poly.color);
-        assigned++; break;
+        assigned++;
+        if (prop.rowIndex) assignments.push({ rowIndex: prop.rowIndex, zone: poly.letter });
+        break;
       }
     }
     if (!prop.zone) _markerColor(prop.marker, '#f7c948');
   });
+
   document.getElementById('statAssigned').textContent = assigned;
   renderPolygonList();
-  showToast(`${assigned} of ${properties.length} properties assigned`, 'success');
+  showToast(`${assigned} properties assigned — writing to sheet...`, 'info');
+
+  // Step 2 — write zone letters back to sheet via Netlify function
+  if (assignments.length && sheetConfig.sheetId) {
+    try {
+      const r = await fetch('/.netlify/functions/sheets-write-zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheetId:   sheetConfig.sheetId,
+          sheetName: sheetConfig.sheetName || 'LI Raw Dataset',
+          assignments,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
+      showToast(`${assigned} zones written to sheet ✓`, 'success');
+    } catch(e) {
+      showToast('Assignment saved locally — sheet write failed: ' + e.message, 'error');
+    }
+  } else {
+    showToast(`${assigned} of ${properties.length} properties assigned`, 'success');
+  }
 }
 function _markerColor(m, c) { if (m) m.getElement().style.background = c; }
 
