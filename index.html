@@ -1402,11 +1402,17 @@ function loadPropertiesFromFunction(props) {
   props.forEach(prop => {
     let { lat, lng, apn, address, city, state, zip, acreage, zone, rowIndex } = prop;
 
-    // Validate coordinates — auto-fix common issues
-    // Auto-swap if clearly reversed (lat should be positive for US, lng negative)
+    // Validate coordinates
+    // Auto-swap if clearly reversed
     if (lat < -90 && lng > 0) { [lat, lng] = [lng, lat]; }
-    else if (lng > 0 && lat > 0 && lat < 90) { lng = -lng; } // lng missing negative sign
-    // US bounds check: lat 18–72, lng -180 to -60
+    else if (lng > 0 && lat > 0 && lat < 90) { lng = -lng; }
+    // Must be real decimal coordinates (not row numbers or integers)
+    // Real coords have decimal precision; row numbers are integers
+    const latStr = String(prop.lat || '');
+    const lngStr = String(prop.lng || '');
+    const hasDecimal = latStr.includes('.') && lngStr.includes('.');
+    if (!hasDecimal) { skipped++; return; }
+    // US bounds: lat 18–72, lng -180 to -60
     if (lat < 18 || lat > 72 || lng < -180 || lng > -60) { skipped++; return; }
 
     const el = document.createElement('div');
@@ -1419,7 +1425,7 @@ function loadPropertiesFromFunction(props) {
         <span style="color:#6b7a99;font-size:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
       </div>`
     );
-    const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
     properties.push({ lat, lng, apn, address, city, state, zip, acreage, zone: zone || null, rowIndex, marker });
   });
   document.getElementById('statProps').textContent = properties.length;
