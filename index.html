@@ -264,6 +264,23 @@
   <div id="shareBanner" onclick="copyShareURL()">🔗 Click to copy shareable link with your current zones</div>
 </div>
 
+<!-- Custom Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="text-align:center">
+    <span class="confirm-icon" id="confirmIcon">⚠️</span>
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div class="confirm-sub" id="confirmSub"></div>
+    <div class="confirm-type-wrap" id="confirmTypeWrap" style="display:none">
+      <div class="confirm-type-label">Type <strong id="confirmTypePhrase"></strong> to confirm</div>
+      <input type="text" id="confirmTypeInput" placeholder="" autocomplete="off">
+    </div>
+    <div class="modal-actions" style="justify-content:center;margin-top:18px;gap:10px">
+      <button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" style="border:1px solid var(--accent2);background:var(--accent2);color:#fff;opacity:1">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- Google Sheets Modal -->
 <div class="modal-overlay" id="sheetsModal">
   <div class="modal">
@@ -1502,22 +1519,5 @@ map.on('load', () => {
   }
 });
 </script>
-
-<!-- Custom Confirm Modal -->
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal" style="text-align:center">
-    <span class="confirm-icon" id="confirmIcon">⚠️</span>
-    <div class="confirm-title" id="confirmTitle"></div>
-    <div class="confirm-sub" id="confirmSub"></div>
-    <div class="confirm-type-wrap" id="confirmTypeWrap" style="display:none">
-      <div class="confirm-type-label">Type <strong id="confirmTypePhrase"></strong> to confirm</div>
-      <input type="text" id="confirmTypeInput" placeholder="" autocomplete="off">
-    </div>
-    <div class="modal-actions" style="justify-content:center;margin-top:18px;gap:10px">
-      <button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button>
-      <button class="btn btn-danger" id="confirmOkBtn" style="border:1px solid var(--accent2);background:var(--accent2);color:#fff;opacity:1">OK</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
