@@ -614,12 +614,14 @@ function _buildCountyPills() {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      // Set a flag to block zone label clicks from firing during this interaction
       window._countyClickActive = true;
       setTimeout(() => { window._countyClickActive = false; }, 400);
       const b = new mapboxgl.LngLatBounds();
       polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding: 100 });
+      // Load county boundary after map finishes animating
+      const sa = polys[0].stateAbbr, cn = polys[0].countyName;
+      map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
     });
 
     const marker = new mapboxgl.Marker({ element:el, anchor:'center' })
@@ -1430,15 +1432,28 @@ function _removeCountyLayer() {
   countySourceId = null;
 }
 function _readdCountyLayer(geojson) {
-  if (countySourceId) {
-    if (map.getLayer(countySourceId+'-fill')) map.removeLayer(countySourceId+'-fill');
-    if (map.getLayer(countySourceId+'-line')) map.removeLayer(countySourceId+'-line');
-    if (map.getSource(countySourceId))        map.removeSource(countySourceId);
+  const _apply = () => {
+    try {
+      if (countySourceId) {
+        if (map.getLayer(countySourceId+'-fill')) map.removeLayer(countySourceId+'-fill');
+        if (map.getLayer(countySourceId+'-line')) map.removeLayer(countySourceId+'-line');
+        if (map.getSource(countySourceId))        map.removeSource(countySourceId);
+      }
+      countySourceId = 'county-' + Date.now();
+      map.addSource(countySourceId, { type:'geojson', data:geojson });
+      map.addLayer({ id:countySourceId+'-fill', type:'fill', source:countySourceId, paint:{'fill-color':'#000000','fill-opacity':0.12} });
+      map.addLayer({ id:countySourceId+'-line', type:'line', source:countySourceId, paint:{'line-color':'#6600cc','line-width':3} });
+    } catch(e) {
+      // If map isn't ready, retry once on next idle
+      map.once('idle', () => _readdCountyLayer(geojson));
+    }
+  };
+  // If map is currently moving, wait for it to settle first
+  if (map.isMoving() || map.isZooming()) {
+    map.once('idle', _apply);
+  } else {
+    _apply();
   }
-  countySourceId = 'county-' + Date.now();
-  map.addSource(countySourceId, { type:'geojson', data:geojson });
-  map.addLayer({ id:countySourceId+'-fill', type:'fill', source:countySourceId, paint:{'fill-color':'#000000','fill-opacity':0.12} });
-  map.addLayer({ id:countySourceId+'-line', type:'line', source:countySourceId, paint:{'line-color':'#6600cc','line-width':3} });
 }
 
 async function loadCounty() {
