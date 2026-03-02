@@ -1,8 +1,5 @@
 // netlify/functions/sheets-read.js
-// Reads property data from "LI Raw Dataset" tab
-// All column lookups by header name — never by position
-
-const { google } = require('googleapis');
+// Uses Google Sheets REST API via fetch — no googleapis package needed
 
 exports.handler = async (event) => {
   const headers = {
@@ -11,95 +8,83 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
 
   try {
     const { sheetId, sheetName = 'LI Raw Dataset' } = JSON.parse(event.body || '{}');
     if (!sheetId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'sheetId required' }) };
 
-    // Auth via service account
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
+    const token = await getAccessToken();
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Sheets API ${res.status}: ${await res.text()}`);
 
-    const sheets = google.sheets({ version: 'v4', auth });
-
-    // Fetch all data from the tab
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: sheetName,
-    });
-
-    const rows = res.data.values;
-    if (!rows || rows.length < 2) {
-      return { statusCode: 200, headers, body: JSON.stringify({ properties: [], headers: [] }) };
-    }
+    const data = await res.json();
+    const rows = data.values || [];
+    if (rows.length < 2) return { statusCode: 200, headers, body: JSON.stringify({ properties: [], totalRows: 0 }) };
 
     const headerRow = rows[0];
-    const dataRows  = rows.slice(1);
-
-    // Build header → index map (by name, never by position)
+    const dataRows = rows.slice(1);
     const colIndex = {};
     headerRow.forEach((h, i) => { if (h) colIndex[h.trim()] = i; });
 
-    // Required columns
-    const latCol  = colIndex['Latitude'];
-    const lngCol  = colIndex['Longitude'];
-
+    const latCol = colIndex['Latitude'];
+    const lngCol = colIndex['Longitude'];
     if (latCol === undefined || lngCol === undefined) {
-      return {
-        statusCode: 400, headers,
-        body: JSON.stringify({ error: 'Latitude or Longitude column not found in sheet headers' })
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Latitude or Longitude column not found' }) };
     }
 
-    // Optional columns — all by header name
-    const apnCol     = colIndex['APN'];
-    const addressCol = colIndex['Parcel Address'];
-    const cityCol    = colIndex['City'];
-    const stateCol   = colIndex['State'];
-    const zipCol     = colIndex['ZIP'];
-    const countyCol  = colIndex['County'];
-    const acreageCol = colIndex['Acreage'];
-    const zoneCol    = colIndex['County Zone'];
-
+    const get = (row, col) => (col !== undefined && row[col]) ? row[col].trim() : '';
     const properties = [];
     dataRows.forEach((row, i) => {
-      const lat = parseFloat(row[latCol]);
-      const lng = parseFloat(row[lngCol]);
+      const lat = parseFloat(get(row, latCol));
+      const lng = parseFloat(get(row, lngCol));
       if (isNaN(lat) || isNaN(lng)) return;
-
       properties.push({
-        rowIndex: i + 2, // 1-based, accounting for header row
-        lat,
-        lng,
-        apn:     apnCol     !== undefined ? (row[apnCol]     || '') : '',
-        address: addressCol !== undefined ? (row[addressCol] || '') : '',
-        city:    cityCol    !== undefined ? (row[cityCol]    || '') : '',
-        state:   stateCol   !== undefined ? (row[stateCol]   || '') : '',
-        zip:     zipCol     !== undefined ? (row[zipCol]     || '') : '',
-        county:  countyCol  !== undefined ? (row[countyCol]  || '') : '',
-        acreage: acreageCol !== undefined ? (row[acreageCol] || '') : '',
-        zone:    zoneCol    !== undefined ? (row[zoneCol]    || '') : '',
+        rowIndex: i + 2, lat, lng,
+        apn:     get(row, colIndex['APN']),
+        address: get(row, colIndex['Parcel Address']),
+        city:    get(row, colIndex['City']),
+        state:   get(row, colIndex['State']),
+        zip:     get(row, colIndex['ZIP']),
+        county:  get(row, colIndex['County']),
+        acreage: get(row, colIndex['Acreage']),
+        zone:    get(row, colIndex['County Zone']),
       });
     });
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ properties, totalRows: dataRows.length }),
-    };
-
+    return { statusCode: 200, headers, body: JSON.stringify({ properties, totalRows: dataRows.length }) };
   } catch (err) {
     console.error('sheets-read error:', err);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
+
+async function getAccessToken() {
+  const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  const now = Math.floor(Date.now() / 1000);
+  const claim = { iss: creds.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets', aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now };
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const payload = b64url(JSON.stringify(claim));
+  const sig = await signRS256(`${header}.${payload}`, creds.private_key);
+  const jwt = `${header}.${payload}.${sig}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Auth failed: ' + JSON.stringify(data));
+  return data.access_token;
+}
+
+function b64url(str) {
+  return Buffer.from(str).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
+
+async function signRS256(data, pemKey) {
+  const { createSign } = require('crypto');
+  const sign = createSign('RSA-SHA256');
+  sign.update(data); sign.end();
+  return sign.sign(pemKey).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
