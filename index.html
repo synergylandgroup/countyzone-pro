@@ -531,9 +531,12 @@ function _addZoneLabel(poly) {
   const el = document.createElement('div');
   el.className = 'zone-label';
   el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.title = 'Click to open the Notes and Pricing panel';
   // Single click on zone label = open Notes & Pricing
+  // Guard: do nothing if a county button was just clicked
   el.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (window._countyClickActive) return;
     openZoneDescModal(poly.id);
   });
   const center = _polyCenter(poly);
@@ -578,8 +581,13 @@ function _buildCountyPills() {
     el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span>`;
     el.title = `Click to zoom into ${county} County`;
 
-    // Single click on county pill = zoom into county, which triggers label mode switch
-    el.addEventListener('click', () => {
+    // Single click on county pill = zoom into county only, never open notes
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      // Set a flag to block zone label clicks from firing during this interaction
+      window._countyClickActive = true;
+      setTimeout(() => { window._countyClickActive = false; }, 400);
       const b = new mapboxgl.LngLatBounds();
       polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding: 100 });
@@ -893,7 +901,7 @@ function renderPolygonList() {
             <div class="poly-name">ZONE ${p.letter}</div>
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
-          <button class="poly-btn" title="Notes &amp; Pricing" onclick="openZoneDescModal('${p.id}');event.stopPropagation()">📝</button>
+          <button class="poly-btn" title="Click to open the Notes and Pricing panel" onclick="openZoneDescModal('${p.id}');event.stopPropagation()">📝</button>
           <button class="poly-btn" title="Delete" onclick="deletePoly('${p.id}');event.stopPropagation()">✕</button>
         `;
         div.onclick = () => zoomToZoneAndCounty(p);
