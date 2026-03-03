@@ -1326,9 +1326,11 @@ function renderPolygonList() {
             <div class="poly-name">ZONE ${p.letter}</div>
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
-          <button class="poly-btn" title="Click to open pricing panel" onclick="openZoneDescModal('${p.id}');event.stopPropagation()">📝</button>
-          <button class="poly-btn" title="Delete" onclick="deletePoly('${p.id}');event.stopPropagation()">✕</button>
+          <button class="poly-btn notes-btn" title="Click to open pricing panel">📝</button>
+          <button class="poly-btn delete-btn" title="Delete zone">✕</button>
         `;
+        div.querySelector('.notes-btn').addEventListener('click', e => { e.stopPropagation(); openZoneDescModal(p.id); });
+        div.querySelector('.delete-btn').addEventListener('click', e => { e.stopPropagation(); deletePoly(p.id); });
         div.onclick = () => zoomToZoneAndCounty(p);
         polyDiv.appendChild(div);
       });
