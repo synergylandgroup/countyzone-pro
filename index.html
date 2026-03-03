@@ -397,6 +397,7 @@ function _setSheetConfig(stateAbbr, countyName, cfg) {
   try { localStorage.setItem('geofence_sheet_configs', JSON.stringify(sheetConfigs)); } catch(e) {}
 }
 let countySourceId = null;
+const _countyLayers = {}; // key -> sourceId for all counties with zones
 let _pendingCountyGeoJSON = null;
 
 // Draw state
@@ -746,6 +747,24 @@ function _finishPolygon() {
   if (drawPoints.length < 3) { showToast('Need at least 3 points', 'error'); return; }
   const pts = drawPoints.slice();
   const color = selectedColor;
+
+  // Validate polygon is within selected county boundary
+  if (_pendingCountyGeoJSON) {
+    // Check if centroid of drawn polygon is within county
+    const avgLng = pts.reduce((s,p) => s+p[0], 0) / pts.length;
+    const avgLat = pts.reduce((s,p) => s+p[1], 0) / pts.length;
+    const inCounty = _pendingCountyGeoJSON.features.some(f => {
+      const coords = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
+                   : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+      return coords.some(poly => pointInPolygon(avgLat, avgLng, poly[0].map(c => [c[0], c[1]])));
+    });
+    if (!inCounty) {
+      showToast('Zone must be drawn within the selected county boundary', 'error');
+      cancelDraw();
+      return;
+    }
+  }
+
   cancelDraw();
   createPolygonAuto(pts, color);
 }
@@ -846,7 +865,13 @@ function saveZoneEditor() {
 async function syncAllPricingToSheet() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
-  const cfg = (sa && cn) ? (_getSheetConfig(sa, cn) || sheetConfig) : sheetConfig;
+  // Try current county first, then fall back to any connected config
+  let cfg = (sa && cn) ? (_getSheetConfig(sa, cn) || sheetConfig) : sheetConfig;
+  // If still no config, try to find one from the polygons being synced
+  if (!cfg || !cfg.sheetId) {
+    const anyPoly = polygons.find(p => p.stateAbbr && p.countyName && _getSheetConfig(p.stateAbbr, p.countyName));
+    if (anyPoly) cfg = _getSheetConfig(anyPoly.stateAbbr, anyPoly.countyName);
+  }
   if (!cfg || !cfg.sheetId) { showToast('Connect a Google Sheet first', 'error'); return; }
 
   // Collect tiers from ALL polygons for this county
@@ -1217,6 +1242,23 @@ function _polyToJSON(p) {
 function persistZones() {
   try { localStorage.setItem('geofence_zones', JSON.stringify(polygons.map(_polyToJSON))); } catch(e) {}
 }
+async function _loadAllCountyBoundaries() {
+  // Find all unique state+county combos that have zones
+  const combos = [...new Set(polygons.filter(p => p.stateAbbr && p.countyName).map(p => _countyKey(p.stateAbbr, p.countyName)))];
+  for (const key of combos) {
+    if (_countyLayers[key]) continue; // already loaded
+    const [sa, cn] = key.split('|');
+    const fips = STATE_FIPS[sa]; if (!fips) continue;
+    try {
+      const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(cn)}'&outFields=*&f=geojson`;
+      const geojson = await (await fetch(url)).json();
+      if (geojson.features && geojson.features.length) {
+        _addCountyBoundaryForKey(key, geojson);
+      }
+    } catch(e) {}
+  }
+}
+
 function restoreZones() {
   try {
     const raw = localStorage.getItem('geofence_zones'); if (!raw) return;
@@ -1587,6 +1629,39 @@ function _removeCountyLayer() {
   if (map.getSource(countySourceId))        map.removeSource(countySourceId);
   countySourceId = null;
 }
+function _addCountyBoundaryForKey(key, geojson) {
+  // Add/update a named county boundary layer
+  const existing = _countyLayers[key];
+  if (existing) {
+    if (map.getLayer(existing+'-fill')) map.removeLayer(existing+'-fill');
+    if (map.getLayer(existing+'-line')) map.removeLayer(existing+'-line');
+    if (map.getSource(existing))        map.removeSource(existing);
+  }
+  const sid = 'county-' + key.replace(/[^a-zA-Z0-9]/g,'-') + '-' + Date.now();
+  _countyLayers[key] = sid;
+  map.addSource(sid, { type:'geojson', data:geojson });
+  map.addLayer({ id:sid+'-fill', type:'fill', source:sid, paint:{'fill-color':'#000000','fill-opacity':0.08} });
+  map.addLayer({ id:sid+'-line', type:'line', source:sid, paint:{'line-color':'#6600cc','line-width':2} });
+  // Click boundary to switch to that county
+  map.on('click', sid+'-fill', (e) => {
+    if (drawMode === 'polygon') return; // don't switch while drawing
+    const [sa, cn] = key.split('|');
+    if (stateSelect.value === sa && document.getElementById('countySelect').value === cn) return;
+    stateSelect.value = sa;
+    loadCounties().then(() => {
+      document.getElementById('countySelect').value = cn;
+      loadCounty();
+      // Restore sheet config for this county
+      const saved = _getSheetConfig(sa, cn);
+      if (saved) { sheetConfig = saved; setConnected(true); }
+      else { sheetConfig = null; setConnected(false); }
+      showToast(`Switched to ${cn} County, ${sa}`, 'success');
+    });
+  });
+  map.on('mouseenter', sid+'-fill', () => { if (drawMode !== 'polygon') map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', sid+'-fill', () => { if (drawMode !== 'polygon') map.getCanvas().style.cursor = ''; });
+}
+
 function _readdCountyLayer(geojson) {
   const _apply = () => {
     try {
