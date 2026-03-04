@@ -202,7 +202,7 @@
   .tip-wrap{position:relative;display:inline-flex;align-items:center;}
   .tip-icon{width:16px;height:16px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;line-height:1;}
   .tip-icon:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
-  .tip-box{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2332;color:#e8f0fe;font-size:12px;line-height:1.6;padding:10px 14px;border-radius:10px;white-space:normal;width:220px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.05s;box-shadow:0 4px 20px rgba(0,0,0,0.25);}
+  .tip-box{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2332;color:#e8f0fe;font-size:12px;line-height:1.6;padding:10px 14px;border-radius:10px;white-space:nowrap;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.05s;box-shadow:0 4px 20px rgba(0,0,0,0.25);}
   .tip-box::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:#1a2332;}.tip-box-up{top:auto!important;bottom:calc(100% + 8px)!important;}.tip-box-up::after{top:100%!important;bottom:auto!important;border-top-color:#1a2332!important;border-bottom-color:transparent!important;}
   .tip-wrap:hover .tip-box{opacity:1;}
 
@@ -263,11 +263,10 @@
   <div class="header-actions-right">
     <div class="tip-wrap">
       <button class="btn btn-ghost" onclick="saveZonesFile()" style="font-size:11px">💾 Save Zones</button>
-      <span class="tip-box">Exports all saved zones to a JSON file that you can download locally and later reload to restore all zones and their associated data.</span>
-    </div>
+<span class="tip-box" style="left:auto;right:0;transform:none;white-space:normal;width:200px;">Exports all saved zones to a JSON file that you can download locally and later reload to restore all zones and their associated data.</span>    </div>
     <div class="tip-wrap">
       <button class="btn btn-ghost" onclick="loadZonesFile()" style="font-size:11px">📂 Load Zones</button>
-      <span class="tip-box">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.</span>
+      <span class="tip-box" style="left:auto;right:0;transform:none;white-space:normal;width:200px;">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.</span>
     </div>
     <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
   </div>
