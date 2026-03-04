@@ -261,14 +261,8 @@
     <div class="logo">COUNTY<span>ZONE</span> <span style="color:var(--muted);font-weight:500">PRO</span></div>
   </div>
   <div class="header-actions-right">
-    <div class="tip-wrap">
-      <button class="btn btn-ghost" onclick="saveZonesFile()" style="font-size:11px">💾 Save Zones</button>
-      <span class="tip-box" style="bottom:auto;top:calc(100% + 8px);transform:translateX(-50%);">Exports all saved zones to a JSON file that you can download locally and later reload to restore all zones and their associated data.<span style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:#1a2332;border-top:none;"></span></span>
-    </div>
-    <div class="tip-wrap" style="margin-left:4px">
-      <button class="btn btn-ghost" onclick="loadZonesFile()" style="font-size:11px">📂 Load Zones</button>
-      <span class="tip-box" style="bottom:auto;top:calc(100% + 8px);transform:translateX(-50%);">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.<span style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:#1a2332;border-top:none;"></span></span>
-    </div>
+    <button class="btn btn-ghost" onclick="saveZonesFile()" title="Export all zones to a JSON file" style="font-size:11px">💾 Save Zones</button>
+    <button class="btn btn-ghost" onclick="loadZonesFile()" title="Restore zones from a saved JSON file" style="font-size:11px">📂 Load Zones</button>
     <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
   </div>
 </header>
@@ -377,13 +371,18 @@
     <input type="text" id="sheetName" value="LI Raw Dataset">
 
     <!-- Column Mappings -->
-    <label>Latitude Column</label><input type="text" id="colLat" value="Latitude">
-    <label>Longitude Column</label><input type="text" id="colLng" value="Longitude">
-    <label>Property ID Column (APN)</label><input type="text" id="colAPN" value="APN">
-    <label>City Column</label><input type="text" id="colCity" value="City">
-    <label>State Column</label><input type="text" id="colState" value="State">
-    <label>ZIP Column</label><input type="text" id="colZip" value="ZIP">
-    <label>Zone Output Column</label><input type="text" id="colZone" value="County Zone">
+    <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:10px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">Column Mappings</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
+        <div><label>Latitude</label><input type="text" id="colLat" value="Latitude"></div>
+        <div><label>Longitude</label><input type="text" id="colLng" value="Longitude"></div>
+        <div><label>Property ID (APN)</label><input type="text" id="colAPN" value="APN"></div>
+        <div><label>City</label><input type="text" id="colCity" value="City"></div>
+        <div><label>State</label><input type="text" id="colState" value="State"></div>
+        <div><label>ZIP</label><input type="text" id="colZip" value="ZIP"></div>
+        <div style="grid-column:1/-1"><label>Zone Output Column</label><input type="text" id="colZone" value="County Zone"></div>
+      </div>
+    </div>
 
     <div class="modal-actions" style="margin-top:16px">
       <button class="btn btn-ghost" onclick="closeSheetsModal()">Cancel</button>
@@ -1387,12 +1386,11 @@ function renderPolygonList() {
         cStatus.innerHTML = `
           <span class="css-dot connected"></span>
           <span class="css-name">Sheet Connected</span>
-          <button class="county-action-btn" style="width:18px;height:18px;font-size:10px;margin-left:4px" title="Copy and paste the URL for this county's page." onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>`;
+          <button class="css-btn" style="margin-left:auto;color:var(--accent2);border-color:#f0c8c8" onclick="disconnectSheetForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">Disconnect</button>`;
       } else {
         cStatus.innerHTML = `
           <span class="css-dot"></span>
-          <span class="css-name not-connected">Sheet Not Connected</span>
-          <button class="county-action-btn" style="width:18px;height:18px;font-size:10px;margin-left:4px" title="Copy and paste the URL for this county's page." onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>`;
+          <span class="css-name not-connected">Not Connected</span>`;
       }
 
       cHdr.onclick = e => {
@@ -1575,14 +1573,16 @@ async function deleteCounty(stateAbbr, countyName, evt) {
   const fullState = abbrToFullName(stateAbbr) || stateAbbr;
   const multi = toDelete.length > 1;
   const letters = toDelete.map(p => p.letter);
-  const zoneList = letters.length > 1
-    ? 'Zones ' + letters.slice(0,-1).join(', ') + ' and ' + letters[letters.length-1]
-    : `Zone ${letters[0]}`;
+  const zoneList = letters.length > 2
+    ? 'Zones ' + letters.slice(0, -1).join(', ') + ' and ' + letters[letters.length - 1]
+    : letters.length === 2
+    ? 'Zones ' + letters[0] + ' and ' + letters[1]
+    : 'Zone ' + letters[0];
   const title = multi
-    ? `Delete all zones in ${countyName} County, ${fullState}?`
+    ? `Delete ${zoneList} in ${countyName} County, ${fullState}?`
     : `Delete Zone ${toDelete[0].letter} in ${countyName} County, ${fullState}?`;
   const sub = multi
-    ? `This will delete ${zoneList}. This action cannot be undone.`
+    ? `This will permanently delete ${zoneList}. This cannot be undone.`
     : 'This action cannot be undone.';
   const confirmed = await _showConfirm({ title, sub, okLabel: 'Delete' });
   if (!confirmed) return;
@@ -1600,8 +1600,8 @@ async function clearAllZones() {
   if (!polygons.length) return;
   // Step 1 — initial warning
   const step1 = await _showConfirm({
-    title: 'Delete ALL saved zones?',
-    sub: `This action will delete ALL ${polygons.length} saved zones. Are you sure you want to do that? This cannot be undone.`,
+    title: `Delete all ${polygons.length} saved zone${polygons.length !== 1 ? 's' : ''}?`,
+    sub: `This will permanently delete all ${polygons.length} zone${polygons.length !== 1 ? 's' : ''}. This cannot be undone.`,
     okLabel: 'OK'
   });
   if (!step1) return;
@@ -1830,6 +1830,22 @@ function disconnectSheet() {
   renderPolygonList();
   showToast('Sheet disconnected', 'info');
 }
+
+function disconnectSheetForCounty(stateAbbr, countyName, evt) {
+  if (evt) evt.stopPropagation();
+  const key = _countyKey(stateAbbr, countyName);
+  delete sheetConfigs[key];
+  DB.saveSheetConfigs(sheetConfigs);
+  const sa = document.getElementById('stateSelect').value;
+  const cn = document.getElementById('countySelect').value;
+  if (sa === stateAbbr && cn === countyName) {
+    sheetConfig = null;
+    setConnected(false);
+  }
+  renderPolygonList();
+  showToast(`Sheet disconnected from ${countyName} County`, 'info');
+}
+
 async function connectSheets() {
   const sheetId = document.getElementById('sheetId').value.trim();
   if (!sheetId) { showToast('Please enter a Spreadsheet ID', 'error'); return; }
