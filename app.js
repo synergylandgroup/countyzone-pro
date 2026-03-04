@@ -323,7 +323,7 @@ function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-  el.dataset.tooltip = 'Open pricing panel';
+
   el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
   // Single click on zone label = open Notes & Pricing
   // Guard: do nothing if a county button was just clicked
@@ -371,7 +371,7 @@ function _buildCountyPills() {
 
     const el = document.createElement('div');
     el.className = 'zone-cluster';
-    el.dataset.tooltip = `Click to zoom into ${county} County`;
+    
     el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span>`;
 
     // Single click on county pill = zoom into county only, never open notes
