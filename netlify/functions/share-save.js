@@ -28,7 +28,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ id, fallback: true, data: payload }) };
     }
 
-    const blobUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/zone-shares/${id}`;
+    const blobUrl = `https://api.netlify.com/api/v1/sites/${siteId}/blobs/${id}?namespace=zone-shares`;
     const res = await fetch(blobUrl, {
       method: 'PUT',
       headers: {
