@@ -20,7 +20,7 @@ exports.handler = async (event) => {
       return { statusCode: 503, headers, body: JSON.stringify({ error: 'Blob storage not configured' }) };
     }
 
-    const blobUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/zone-shares/${id}`;
+    const blobUrl = `https://api.netlify.com/api/v1/sites/${siteId}/blobs/${id}?namespace=zone-shares`;
     const res = await fetch(blobUrl, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
