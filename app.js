@@ -123,6 +123,8 @@ function _setSheetConfig(stateAbbr, countyName, cfg) {
 let countySourceId = null;
 const _countyLayers = {}; // key -> sourceId for all counties with zones
 let _pendingCountyGeoJSON = null;
+let _countyGeoJSONCache = {}; // key: "stateAbbr|countyName"
+
 
 // Draw state
 let drawMode = null;
@@ -320,9 +322,8 @@ let _countyPillMarkers = {};
 function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
-  el.className = 'zone-label';
-  el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
-  el.setAttribute('data-tip', 'Click to open pricing panel');
+  el.className = 'zone-label tip-wrap';
+  el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span><span class="tip-box" style="left:50%;transform:translateX(-50%);top:calc(100% + 8px);">Open pricing panel</span>`;
   // Single click on zone label = open Notes & Pricing
   // Guard: do nothing if a county button was just clicked
   el.addEventListener('click', (e) => {
@@ -368,9 +369,8 @@ function _buildCountyPills() {
     const count = polys.length;
 
     const el = document.createElement('div');
-    el.className = 'zone-cluster';
-    el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span>`;
-    el.title = `Click to zoom into ${county} County`;
+    el.className = 'zone-cluster tip-wrap';
+    el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span><span class="tip-box" style="left:50%;transform:translateX(-50%);top:calc(100% + 8px);">Click to zoom into ${county} County</span>`;
 
     // Single click on county pill = zoom into county only, never open notes
     el.addEventListener('click', (e) => {
@@ -490,12 +490,15 @@ function _finishPolygon() {
   const pts = drawPoints.slice();
   const color = selectedColor;
 
-  // Validate polygon is within selected county boundary
-  if (_pendingCountyGeoJSON) {
-    // Check if centroid of drawn polygon is within county
+  // Validate polygon is within selected county boundary — works at ALL zoom levels
+  const sa = stateSelect ? stateSelect.value : null;
+  const cn = document.getElementById('countySelect') ? document.getElementById('countySelect').value : null;
+  const cacheKey = sa && cn ? sa + '|' + cn : null;
+  const validationGeoJSON = _pendingCountyGeoJSON || (cacheKey ? _countyGeoJSONCache[cacheKey] : null);
+  if (validationGeoJSON) {
     const avgLng = pts.reduce((s,p) => s+p[0], 0) / pts.length;
     const avgLat = pts.reduce((s,p) => s+p[1], 0) / pts.length;
-    const inCounty = _pendingCountyGeoJSON.features.some(f => {
+    const inCounty = validationGeoJSON.features.some(f => {
       const coords = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
                    : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
       return coords.some(poly => pointInPolygon(avgLat, avgLng, poly[0].map(c => [c[0], c[1]])));
@@ -664,10 +667,19 @@ async function loadZonesFromShareId(shareId) {
     if (!data.zones) throw new Error('No zones in share');
     data.zones.forEach(d => _loadZone(d));
     renderPolygonList(); persistZones(); _rebuildAllLabels();
-    if (polygons.length) {
+    // Zoom to shared county zones only, not all polygons
+    const sharedZones = polygons.filter(p => p.stateAbbr === data.stateAbbr && p.countyName === data.countyName);
+    if (sharedZones.length) {
       const b = new mapboxgl.LngLatBounds();
-      polygons.forEach(p => p.points.forEach(pt => b.extend(pt)));
+      sharedZones.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding:60 });
+      // Select county in dropdowns
+      if (stateSelect && data.stateAbbr) {
+        stateSelect.value = data.stateAbbr;
+        await loadCounties();
+        const countyEl = document.getElementById('countySelect');
+        if (countyEl) { countyEl.value = data.countyName; await loadCounty(); }
+      }
       showToast(`Loaded shared zones for ${data.countyName} County, ${data.stateAbbr}`, 'success');
     }
     return true;
@@ -912,7 +924,7 @@ function renderPolygonList() {
 
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
-    hdr.innerHTML = `<span class="sg-arrow">▶</span><span style="flex:1">${fullName}</span><span style="font-size:10px;color:var(--muted);font-weight:400">${totalZones} zone${totalZones!==1?'s':''}</span>`;
+    hdr.innerHTML = `<span class="sg-arrow">▶</span><span class="sg-name">${fullName}</span><span class="sg-count">${totalZones}</span>`;
     hdr.onclick = () => {
       hdr.classList.toggle('open');
       countiesDiv.classList.toggle('open');
@@ -935,7 +947,7 @@ function renderPolygonList() {
       cHdr.innerHTML = `
         <span class="county-name-text">${countyName} County</span>
         <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
-        <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Copy shareable link</span></span>
+        <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Copy link to ${countyName} County's page</span></span>
         <span class="tip-wrap"><button class="county-action-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">${isConnected ? 'Manage sheet' : 'Connect a sheet'}</span></span>
         <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete county zones</span></span>
       `;
@@ -974,7 +986,7 @@ function renderPolygonList() {
             <div class="poly-name">ZONE ${p.letter}</div>
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
-          <span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">🏷️</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Edit pricing tiers</span></span>
+          <span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">⚙</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Open pricing panel</span></span>
           <span class="tip-wrap"><button class="poly-btn delete-btn">✕</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete this zone</span></span>
         `;
         div.querySelector('.notes-btn').addEventListener('click', e => { e.stopPropagation(); openZoneDescModal(p.id); });
@@ -989,7 +1001,10 @@ function renderPolygonList() {
       countiesDiv.appendChild(cGroup);
     });
 
-    stateDiv.appendChild(hdr);
+    const hdrWrap = document.createElement('div');
+    hdrWrap.className = 'state-header-wrap';
+    hdrWrap.appendChild(hdr);
+    stateDiv.appendChild(hdrWrap);
     stateDiv.appendChild(countiesDiv);
     list.appendChild(stateDiv);
   });
@@ -1035,6 +1050,7 @@ async function loadCountyBoundaryOnly(stateAbbr, countyName) {
     const geojson = await (await fetch(url)).json();
     if (!geojson.features || !geojson.features.length) return;
     _pendingCountyGeoJSON = geojson;
+    _countyGeoJSONCache[stateAbbr + '|' + countyName] = geojson;
     _readdCountyLayer(geojson);
   } catch(e) {}
 }
@@ -1719,6 +1735,7 @@ async function loadCounty() {
     const geojson = await (await fetch(url)).json();
     if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
     _pendingCountyGeoJSON = geojson;
+    _countyGeoJSONCache[abbr + '|' + county] = geojson;
     _readdCountyLayer(geojson);
     const bounds = new mapboxgl.LngLatBounds();
     geojson.features.forEach(f => {

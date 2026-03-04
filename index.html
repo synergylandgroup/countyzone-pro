@@ -83,12 +83,15 @@
   .empty-state{text-align:center;color:var(--muted);font-size:12px;padding:24px 10px;line-height:1.8;}
 
   /* State → County hierarchy */
-  .state-group{margin-bottom:5px;}
-  .state-header{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;transition:border-color 0.15s;user-select:none;}
-  .state-header:hover{border-color:var(--accent);color:var(--accent);}
-  .state-header .sg-arrow{font-size:9px;color:var(--muted);transition:transform 0.2s;display:inline-block;}
+  .state-group{margin-bottom:4px;}
+  .state-header-wrap{padding:3px 8px;}
+  .state-header{background:#3d5068;border:none;border-radius:20px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;transition:all 0.15s;user-select:none;}
+  .state-header:hover{background:#4a6070;}
+  .state-header .sg-arrow{font-size:9px;color:#a8bcd4;transition:transform 0.2s;display:inline-block;}
   .state-header.open .sg-arrow{transform:rotate(90deg);}
-  .state-counties{display:none;padding-left:8px;margin-top:3px;}
+  .state-header .sg-name{color:#e8edf5;flex:1;}
+  .state-header .sg-count{font-size:10px;font-weight:700;background:rgba(255,255,255,0.18);color:#e8edf5;padding:1px 8px;border-radius:8px;letter-spacing:0.04em;}
+  .state-counties{display:none;padding-left:12px;margin-top:1px;}
   .state-counties.open{display:block;}
   .county-group{margin-bottom:0;}
   .county-polys{padding:4px 8px 6px 8px;}
