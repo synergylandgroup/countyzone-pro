@@ -383,8 +383,16 @@ function _buildCountyPills() {
       const b = new mapboxgl.LngLatBounds();
       polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding: 100 });
-      // Load county boundary after map finishes animating
       const sa = polys[0].stateAbbr, cn = polys[0].countyName;
+      // Update dropdowns immediately
+      if (stateSelect.value !== sa) {
+        stateSelect.value = sa;
+        loadCounties().then(() => {
+          document.getElementById('countySelect').value = cn;
+        });
+      } else {
+        document.getElementById('countySelect').value = cn;
+      }
       map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
     });
 
