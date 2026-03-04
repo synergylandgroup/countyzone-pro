@@ -201,6 +201,52 @@
   .zone-file-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
   .zone-file-row .btn{flex:1;min-width:0;font-size:10px;padding:5px 6px;text-align:center;}
 
+
+  /* TOOLTIP */
+  .tip-wrap{position:relative;display:inline-flex;align-items:center;}
+  .tip-icon{width:16px;height:16px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;line-height:1;}
+  .tip-icon:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
+  .tip-box{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a2332;color:#e8f0fe;font-size:11px;line-height:1.55;padding:8px 11px;border-radius:8px;white-space:normal;width:220px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.15s;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+  .tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a2332;}
+  .tip-wrap:hover .tip-box{opacity:1;}
+
+  /* HEADER REDESIGN */
+  header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);display:grid;grid-template-columns:320px 1fr;align-items:center;height:52px;}
+  .header-logo{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);height:100%;padding:0 16px;}
+  .header-actions-right{display:flex;align-items:center;justify-content:flex-end;padding:0 16px;gap:8px;}
+  #sidebarToggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;color:var(--muted);}
+
+  /* COUNTY HEADER REDESIGN */
+  .county-header{padding:7px 10px 7px 12px;display:flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border-bottom:1px solid var(--border);}
+  .county-header:hover{background:var(--accent-light);}
+  .county-name-text{flex:1;font-size:12px;font-weight:600;color:var(--text);}
+  .county-zone-count{font-size:10px;color:var(--muted);font-weight:400;}
+  .county-action-btn{background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;color:var(--muted);transition:all 0.15s;flex-shrink:0;}
+  .county-action-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* COUNTY SHEET STATUS REDESIGN */
+  .county-sheet-status{display:flex;align-items:center;gap:6px;padding:4px 12px 6px 12px;background:#fff;}
+  .css-dot{width:7px;height:7px;border-radius:50%;background:#d9534f;flex-shrink:0;}
+  .css-dot.connected{background:var(--green);box-shadow:0 0 5px rgba(45,138,85,0.4);}
+  .css-name{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+  .css-name.not-connected{color:#d9534f;}
+  .css-action-btns{display:flex;gap:4px;margin-left:6px;}
+
+  /* SHEETS MODAL REDESIGN */
+  .sm-header{display:flex;align-items:center;margin-bottom:16px;}
+  .sm-title{font-size:15px;font-weight:700;letter-spacing:0.04em;color:var(--text);flex:1;}
+  .sm-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+  .sm-close:hover{border-color:var(--accent2);color:var(--accent2);}
+  .sm-service-box{background:var(--accent-light);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:11px;line-height:1.7;color:var(--text);}
+  .sm-service-box strong{display:block;margin-bottom:3px;color:var(--zone-blue);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;}
+  .sm-service-email{font-family:monospace;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 8px;margin-top:4px;color:var(--zone-blue);cursor:pointer;word-break:break-all;}
+  .sm-service-email:hover{border-color:var(--accent);}
+  .sm-status-row{display:flex;align-items:center;gap:7px;padding:6px 0 10px;}
+  .sm-disconnect{background:none;border:1px solid #f0c8c8;color:var(--accent2);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;margin-left:auto;}
+  .sm-disconnect:hover{background:var(--accent2);color:#fff;}
+  .modal label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:3px;margin-top:10px;}
+  .modal label:first-of-type{margin-top:0;}
+
   @media(max-width:700px){
     body{grid-template-columns:1fr;}
     aside{position:absolute;top:56px;left:0;height:calc(100vh - 56px);width:300px;z-index:500;transform:translateX(-100%);}
@@ -214,8 +260,27 @@
 <body>
 
 <header>
-  <button id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
-  <div class="logo">COUNTY<span>ZONE</span> <span style="color:var(--muted);font-weight:500">PRO</span></div>
+  <div class="header-logo">
+    <button id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+    <div class="logo">COUNTY<span>ZONE</span> <span style="color:var(--muted);font-weight:500">PRO</span></div>
+  </div>
+  <div class="header-actions-right">
+    <div class="tip-wrap">
+      <button class="btn btn-ghost" onclick="saveZonesFile()" style="font-size:11px">💾 Save Zones</button>
+      <span class="tip-box">Exports all saved zones to a JSON file that you can download locally and later reload to restore all zones and their associated data.</span>
+    </div>
+    <span class="tip-icon" tabindex="0">?
+      <span class="tip-box" style="left:auto;right:0;transform:none;">Exports all saved zones to a JSON file that you can download locally and later reload to restore all zones and their associated data.</span>
+    </span>
+    <div class="tip-wrap" style="margin-left:4px">
+      <button class="btn btn-ghost" onclick="loadZonesFile()" style="font-size:11px">📂 Load Zones</button>
+      <span class="tip-box">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.</span>
+    </div>
+    <span class="tip-icon" tabindex="0">?
+      <span class="tip-box" style="left:auto;right:0;transform:none;">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.</span>
+    </span>
+    <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
+  </div>
 </header>
 
 <aside id="sidebar">
@@ -242,12 +307,7 @@
     <div class="help-tip" id="drawHelp">Select a state &amp; county above, then click Draw Polygon.</div>
     <div class="section-label" style="margin-top:10px">Zone Color</div>
     <div class="color-row" id="colorRow"></div>
-    <div class="zone-file-row">
-      <button class="btn btn-ghost" onclick="saveZonesFile()" title="Export zones to JSON file">💾 Save Zones</button>
-      <button class="btn btn-ghost" onclick="loadZonesFile()" title="Import zones from JSON file">📂 Load Zones</button>
-      <button class="btn btn-ghost" onclick="exportCSV()" title="Download properties as CSV">↓ CSV</button>
-    </div>
-    <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
+
   </div>
 
   <!-- SAVED ZONES HEADER -->
@@ -291,23 +351,49 @@
 <!-- Google Sheets Modal -->
 <div class="modal-overlay" id="sheetsModal">
   <div class="modal">
-    <h2>GOOGLE SHEETS INTEGRATION</h2>
-    <div id="sheetsModalCounty" style="background:var(--accent-light);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--zone-blue);margin-bottom:12px;display:none"></div>
-    <p>Paste your Spreadsheet ID below. The sheet must be shared: <strong>File → Share → Anyone with link → Viewer</strong>.</p>
-    <label>SPREADSHEET ID</label>
+    <!-- Header -->
+    <div class="sm-header">
+      <div class="sm-title">Google Sheets Integration</div>
+      <div id="sheetsModalCounty" style="background:var(--accent-light);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:var(--zone-blue);display:none;margin-right:10px"></div>
+      <button class="sm-close" onclick="closeSheetsModal()">✕</button>
+    </div>
+
+    <!-- Service Account Instructions -->
+    <div class="sm-service-box">
+      <strong>Share your Google Sheet with this service account</strong>
+      Copy and paste the following service account email into your Google Sheet's Share field:<br>
+      In your Google Sheet, go to <strong>File → Share → Add people and groups</strong>, paste the email below, and grant it <strong>Editor</strong> access.
+      <div class="sm-service-email" onclick="navigator.clipboard.writeText('countyzone-sheets@countyzone-pro-489005.iam.gserviceaccount.com').then(()=>showToast('Email copied!','success'))" title="Click to copy">countyzone-sheets@countyzone-pro-489005.iam.gserviceaccount.com</div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="sm-status-row" id="smStatusRow">
+      <span class="css-dot" id="smDot"></span>
+      <span style="font-size:11px;color:var(--muted)" id="smStatusText">Sheet Not Connected</span>
+      <button class="sm-disconnect" id="smDisconnectBtn" onclick="disconnectSheet()" style="display:none">Disconnect</button>
+    </div>
+
+    <!-- Spreadsheet ID -->
+    <label>Spreadsheet ID</label>
+    <div class="gs-help" style="margin-bottom:4px">Copy from your URL: docs.google.com/spreadsheets/d/<strong>[THIS PART]</strong>/edit</div>
     <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
-    <div class="gs-help">From your URL: docs.google.com/spreadsheets/d/<strong>[THIS PART]</strong>/edit</div>
-    <label>SHEET TAB NAME (Raw Data)</label><input type="text" id="sheetName" value="LI Raw Dataset">
-    <label>LATITUDE COLUMN</label><input type="text" id="colLat" value="Latitude">
-    <label>LONGITUDE COLUMN</label><input type="text" id="colLng" value="Longitude">
-    <label>PROPERTY ID COLUMN (APN)</label><input type="text" id="colAPN" value="APN">
-    <label>CITY COLUMN</label><input type="text" id="colCity" value="City">
-    <label>STATE COLUMN</label><input type="text" id="colState" value="State">
-    <label>ZIP COLUMN</label><input type="text" id="colZip" value="ZIP">
-    <label>ZONE OUTPUT COLUMN</label><input type="text" id="colZone" value="County Zone">
-    <div class="modal-actions">
-      <button class="btn btn-danger" onclick="closeSheetsModal()">CANCEL</button>
-      <button class="btn btn-primary" onclick="connectSheets()">CONNECT &amp; LOAD</button>
+
+    <!-- Sheet Name -->
+    <label>Google Sheet Name (Tab)</label>
+    <input type="text" id="sheetName" value="LI Raw Dataset">
+
+    <!-- Column Mappings -->
+    <label>Latitude Column</label><input type="text" id="colLat" value="Latitude">
+    <label>Longitude Column</label><input type="text" id="colLng" value="Longitude">
+    <label>Property ID Column (APN)</label><input type="text" id="colAPN" value="APN">
+    <label>City Column</label><input type="text" id="colCity" value="City">
+    <label>State Column</label><input type="text" id="colState" value="State">
+    <label>ZIP Column</label><input type="text" id="colZip" value="ZIP">
+    <label>Zone Output Column</label><input type="text" id="colZone" value="County Zone">
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeSheetsModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="connectSheets()">Connect &amp; Load</button>
     </div>
   </div>
 </div>
@@ -1276,40 +1362,36 @@ function renderPolygonList() {
       cGroup.className = 'county-group';
 
       const cCfg = _getSheetConfig(stateAbbr, countyName);
+      const isConnected = !!(cCfg && cCfg.sheetId);
+
       const cHdr = document.createElement('div');
       cHdr.className = 'county-header';
       cHdr.innerHTML = `
-        <span style="flex:1;font-weight:600">${countyName} County</span>
-        <span style="font-size:10px;margin-right:4px;font-weight:400;color:var(--muted)">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
-        <button class="poly-btn" title="Delete county zones" style="font-size:11px" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button>
+        <span class="county-name-text">${countyName} County</span>
+        <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
+        <button class="county-action-btn" title="Share this county's zones" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>
+        <button class="county-action-btn" title="${isConnected ? 'Manage sheet connection' : 'Connect a sheet'}" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button>
+        <button class="county-action-btn" title="Delete county zones" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button>
       `;
-      // Sheet status row
+
+      // Sheet status row — clean, no gray background
       const cStatus = document.createElement('div');
       cStatus.className = 'county-sheet-status';
       cStatus.dataset.state = stateAbbr;
       cStatus.dataset.county = countyName;
-      if (cCfg && cCfg.sheetId) {
+      if (isConnected) {
         cStatus.innerHTML = `
           <span class="css-dot connected"></span>
-          <span class="css-name" id="sheetname-${stateAbbr}-${countyName.replace(/\s/g,'-')}">Loading sheet name...</span>
-          <div style="margin-left:auto;display:flex;gap:4px">
-            <button class="css-btn" title="Share this county's zones" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>
-            <button class="css-btn" title="Manage sheet connection" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button>
-          </div>`;
-        // Fetch sheet name async
+          <span class="css-name" id="sheetname-${stateAbbr}-${countyName.replace(/\s/g,'-')}">Sheet Connected</span>`;
         setTimeout(() => _fetchSheetName(cCfg.sheetId, stateAbbr, countyName), 100);
       } else {
         cStatus.innerHTML = `
           <span class="css-dot"></span>
-          <span class="css-name not-connected">Sheet not connected</span>
-          <div style="margin-left:auto;display:flex;gap:4px">
-            <button class="css-btn" title="Share this county's zones" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>
-            <button class="css-btn" title="Connect a sheet" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button>
-          </div>`;
+          <span class="css-name not-connected">Sheet Not Connected</span>`;
       }
+
       cHdr.onclick = e => {
-        if (e.target.classList.contains('poly-btn') || e.target.closest('.poly-btn') ||
-            e.target.classList.contains('css-btn') || e.target.closest('.css-btn')) return;
+        if (e.target.closest('.county-action-btn')) return;
         navigateToCounty(stateAbbr, countyName);
       };
 
@@ -1486,7 +1568,10 @@ async function deleteCounty(stateAbbr, countyName, evt) {
   if (!toDelete.length) return;
   const fullState = abbrToFullName(stateAbbr) || stateAbbr;
   const multi = toDelete.length > 1;
-  const zoneList = toDelete.map(p => `Zone ${p.letter}`).join(', ');
+  const letters = toDelete.map(p => p.letter);
+  const zoneList = letters.length > 1
+    ? 'Zones ' + letters.slice(0,-1).join(', ') + ' and ' + letters[letters.length-1]
+    : `Zone ${letters[0]}`;
   const title = multi
     ? `Delete all zones in ${countyName} County, ${fullState}?`
     : `Delete Zone ${toDelete[0].letter} in ${countyName} County, ${fullState}?`;
@@ -1510,7 +1595,7 @@ async function clearAllZones() {
   // Step 1 — initial warning
   const step1 = await _showConfirm({
     title: 'Delete ALL saved zones?',
-    sub: 'This action will delete ALL saved zones. Are you sure you want to do that? This cannot be undone.',
+    sub: `This action will delete ALL (${polygons.length}) saved zones. Are you sure you want to do that? This cannot be undone.`,
     okLabel: 'OK'
   });
   if (!step1) return;
@@ -1670,31 +1755,72 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 // GOOGLE SHEETS
 // ═══════════════════════════════════════════════════════
 function openSheetsModal() {
-  // Load config for currently selected county if it exists
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
   const badge = document.getElementById('sheetsModalCounty');
+  const existing = (sa && cn) ? _getSheetConfig(sa, cn) : null;
+
+  // County badge
   if (sa && cn) {
     badge.textContent = `${cn} County, ${sa}`;
     badge.style.display = '';
-    const existing = _getSheetConfig(sa, cn);
-    if (existing) {
-      document.getElementById('sheetId').value    = existing.sheetId    || '';
-      document.getElementById('sheetName').value  = existing.sheetName  || 'LI Raw Dataset';
-      document.getElementById('colLat').value     = existing.colLat     || 'Latitude';
-      document.getElementById('colLng').value     = existing.colLng     || 'Longitude';
-      document.getElementById('colAPN').value     = existing.colAPN     || 'APN';
-      document.getElementById('colCity').value    = existing.colCity    || 'City';
-      document.getElementById('colState').value   = existing.colState   || 'State';
-      document.getElementById('colZip').value     = existing.colZip     || 'ZIP';
-      document.getElementById('colZone').value    = existing.colZone    || 'County Zone';
-    }
   } else {
     badge.style.display = 'none';
   }
+
+  // Connection status row
+  const dot = document.getElementById('smDot');
+  const statusText = document.getElementById('smStatusText');
+  const disconnectBtn = document.getElementById('smDisconnectBtn');
+  if (existing && existing.sheetId) {
+    dot.className = 'css-dot connected';
+    statusText.textContent = 'Sheet Connected';
+    statusText.style.color = 'var(--green)';
+    disconnectBtn.style.display = '';
+  } else {
+    dot.className = 'css-dot';
+    statusText.textContent = 'Sheet Not Connected';
+    statusText.style.color = 'var(--muted)';
+    disconnectBtn.style.display = 'none';
+  }
+
+  // Populate fields
+  if (existing) {
+    document.getElementById('sheetId').value    = existing.sheetId    || '';
+    document.getElementById('sheetName').value  = existing.sheetName  || 'LI Raw Dataset';
+    document.getElementById('colLat').value     = existing.colLat     || 'Latitude';
+    document.getElementById('colLng').value     = existing.colLng     || 'Longitude';
+    document.getElementById('colAPN').value     = existing.colAPN     || 'APN';
+    document.getElementById('colCity').value    = existing.colCity    || 'City';
+    document.getElementById('colState').value   = existing.colState   || 'State';
+    document.getElementById('colZip').value     = existing.colZip     || 'ZIP';
+    document.getElementById('colZone').value    = existing.colZone    || 'County Zone';
+  } else {
+    document.getElementById('sheetId').value = '';
+  }
+
   document.getElementById('sheetsModal').classList.add('open');
 }
 function closeSheetsModal() { document.getElementById('sheetsModal').classList.remove('open'); }
+
+function disconnectSheet() {
+  const sa = document.getElementById('stateSelect').value;
+  const cn = document.getElementById('countySelect').value;
+  if (!sa || !cn) return;
+  delete sheetConfigs[_countyKey(sa, cn)];
+  DB.saveSheetConfigs(sheetConfigs);
+  if (sheetConfig && sheetConfig.stateAbbr === sa && sheetConfig.countyName === cn) {
+    sheetConfig = null;
+    setConnected(false);
+  }
+  // Reset modal status
+  document.getElementById('smDot').className = 'css-dot';
+  document.getElementById('smStatusText').textContent = 'Sheet Not Connected';
+  document.getElementById('smDisconnectBtn').style.display = 'none';
+  document.getElementById('sheetId').value = '';
+  renderPolygonList();
+  showToast('Sheet disconnected', 'info');
+}
 async function connectSheets() {
   const sheetId = document.getElementById('sheetId').value.trim();
   if (!sheetId) { showToast('Please enter a Spreadsheet ID', 'error'); return; }
