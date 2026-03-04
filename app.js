@@ -935,9 +935,9 @@ function renderPolygonList() {
       cHdr.innerHTML = `
         <span class="county-name-text">${countyName} County</span>
         <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
-        <button class="county-action-btn" title="Copy shareable link for this county" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button>
-        <button class="county-action-btn" title="${isConnected ? 'Manage sheet connection' : 'Connect a sheet'}" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button>
-        <button class="county-action-btn" title="Delete county zones" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button>
+        <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up">Copy shareable link for this county</span></span>
+        <span class="tip-wrap"><button class="county-action-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button><span class="tip-box tip-box-up">${isConnected ? 'Manage sheet connection' : 'Connect a sheet'}</span></span>
+        <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up">Delete all zones in this county</span></span>
       `;
 
       // Sheet status row — clean, no gray background
@@ -974,8 +974,8 @@ function renderPolygonList() {
             <div class="poly-name">ZONE ${p.letter}</div>
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
-          <button class="poly-btn notes-btn" title="Edit pricing tiers">🏷️</button>
-          <button class="poly-btn delete-btn" title="Delete zone">✕</button>
+          <span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">🏷️</button><span class="tip-box tip-box-up">Edit pricing tiers</span></span>
+          <span class="tip-wrap"><button class="poly-btn delete-btn">✕</button><span class="tip-box tip-box-up">Delete this zone</span></span>
         `;
         div.querySelector('.notes-btn').addEventListener('click', e => { e.stopPropagation(); openZoneDescModal(p.id); });
         div.querySelector('.delete-btn').addEventListener('click', e => { e.stopPropagation(); deletePoly(p.id); });
@@ -1292,9 +1292,6 @@ function copyShareURL() {
   const b = document.getElementById('shareBanner');
   navigator.clipboard.writeText(b.textContent.replace('🔗 ','')).then(() => { showToast('Copied!','success'); b.style.display='none'; });
 }
-function loadZonesFromURL() {
-  try {
-    const shareId = new URLSearchParams(window.location.search).get('share');
     if (shareId) {
       // Load from short share ID after map loads
       setTimeout(() => loadZonesFromShareId(shareId), 200);

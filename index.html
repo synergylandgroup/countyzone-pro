@@ -202,8 +202,8 @@
   .tip-wrap{position:relative;display:inline-flex;align-items:center;}
   .tip-icon{width:16px;height:16px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;line-height:1;}
   .tip-icon:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
-  .tip-box{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2332;color:#e8f0fe;font-size:12px;line-height:1.6;padding:10px 14px;border-radius:10px;white-space:normal;width:240px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.05s;box-shadow:0 4px 20px rgba(0,0,0,0.25);}
-  .tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1a2332;}
+  .tip-box{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2332;color:#e8f0fe;font-size:12px;line-height:1.6;padding:10px 14px;border-radius:10px;white-space:normal;width:220px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.05s;box-shadow:0 4px 20px rgba(0,0,0,0.25);}
+  .tip-box::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:#1a2332;}.tip-box-up{top:auto!important;bottom:calc(100% + 8px)!important;}.tip-box-up::after{top:100%!important;bottom:auto!important;border-top-color:#1a2332!important;border-bottom-color:transparent!important;}
   .tip-wrap:hover .tip-box{opacity:1;}
 
   /* HEADER REDESIGN */
@@ -314,8 +314,14 @@
 <div class="map-wrap">
   <div id="map"></div>
   <div id="mapControls">
-    <button id="northBtn" onclick="resetNorth()" title="Reset to North">⬆ North</button>
-    <select id="styleSelect" onchange="changeMapStyle(this.value)" title="Switch map style"></select>
+    <div class="tip-wrap">
+      <button id="northBtn" onclick="resetNorth()">⬆ North</button>
+      <span class="tip-box">Reset map to face North</span>
+    </div>
+    <div class="tip-wrap">
+      <select id="styleSelect" onchange="changeMapStyle(this.value)"></select>
+      <span class="tip-box">Switch map style</span>
+    </div>
   </div>
   <div id="drawHint"></div>
   <div id="shareBanner" onclick="copyShareURL()">🔗 Click to copy shareable link with your current zones</div>
