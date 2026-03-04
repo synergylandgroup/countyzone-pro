@@ -438,9 +438,9 @@
 
 <script>
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // STORAGE ADAPTER
-// ─────────────────────────────────────────────────────
+// ---------------------------------------------------------
 // All app persistence flows through these functions.
 // Currently backed by localStorage.
 //
@@ -455,10 +455,10 @@
 //
 // Example Supabase swap for DB_saveZones:
 //   const { error } = await supabase.from('zones').upsert({ user_id: currentUser.id, data: zones });
-// ═══════════════════════════════════════════════════════
+// =========================================================
 
 const DB = {
-  // ── Zones ──────────────────────────────────────────
+  // -- Zones ------------------------------------------
   saveZones(zones) {
     // SUPABASE: await supabase.from('zones').upsert({ user_id, data: zones })
     try { localStorage.setItem('geofence_zones', JSON.stringify(zones)); } catch(e) {}
@@ -469,7 +469,7 @@ const DB = {
     try { const r = localStorage.getItem('geofence_zones'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
-  // ── Sheet Configs ───────────────────────────────────
+  // -- Sheet Configs -----------------------------------
   saveSheetConfigs(configs) {
     // SUPABASE: await supabase.from('sheet_configs').upsert({ user_id, configs })
     try { localStorage.setItem('geofence_sheet_configs', JSON.stringify(configs)); } catch(e) {}
@@ -480,7 +480,7 @@ const DB = {
     try { const r = localStorage.getItem('geofence_sheet_configs'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
-  // ── App State ───────────────────────────────────────
+  // -- App State ---------------------------------------
   saveAppState(state) {
     // SUPABASE: await supabase.from('app_state').upsert({ user_id, ...state })
     try { localStorage.setItem('geofence_app_state', JSON.stringify(state)); } catch(e) {}
@@ -491,7 +491,7 @@ const DB = {
     try { const r = localStorage.getItem('geofence_app_state'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
-  // ── County List Cache ───────────────────────────────
+  // -- County List Cache -------------------------------
   // (keep in localStorage even after Supabase migration — this is just a UI cache)
   saveCountyCache(abbr, counties) {
     try { localStorage.setItem('counties_'+abbr, JSON.stringify({counties, abbr, ts: Date.now()})); } catch(e) {}
@@ -505,7 +505,7 @@ const DB = {
     try { localStorage.removeItem('counties_'+abbr); } catch(e) {}
   },
 
-  // ── UI State (collapse/expand) ──────────────────────
+  // -- UI State (collapse/expand) ----------------------
   // SUPABASE: await supabase.from('ui_state').upsert({ user_id, key, value })
   saveUIState(key, value) {
     try { localStorage.setItem('czp_ui_'+key, JSON.stringify(value)); } catch(e) {}
@@ -516,9 +516,9 @@ const DB = {
   },
 };
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // STATES DATA
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const STATES = [["Alabama","AL"],["Alaska","AK"],["Arizona","AZ"],["Arkansas","AR"],["California","CA"],["Colorado","CO"],["Connecticut","CT"],["Delaware","DE"],["Florida","FL"],["Georgia","GA"],["Hawaii","HI"],["Idaho","ID"],["Illinois","IL"],["Indiana","IN"],["Iowa","IA"],["Kansas","KS"],["Kentucky","KY"],["Louisiana","LA"],["Maine","ME"],["Maryland","MD"],["Massachusetts","MA"],["Michigan","MI"],["Minnesota","MN"],["Mississippi","MS"],["Missouri","MO"],["Montana","MT"],["Nebraska","NE"],["Nevada","NV"],["New Hampshire","NH"],["New Jersey","NJ"],["New Mexico","NM"],["New York","NY"],["North Carolina","NC"],["North Dakota","ND"],["Ohio","OH"],["Oklahoma","OK"],["Oregon","OR"],["Pennsylvania","PA"],["Rhode Island","RI"],["South Carolina","SC"],["South Dakota","SD"],["Tennessee","TN"],["Texas","TX"],["Utah","UT"],["Vermont","VT"],["Virginia","VA"],["Washington","WA"],["West Virginia","WV"],["Wisconsin","WI"],["Wyoming","WY"]];
 const STATE_FIPS = {"AL":"01","AK":"02","AZ":"04","AR":"05","CA":"06","CO":"08","CT":"09","DE":"10","FL":"12","GA":"13","HI":"15","ID":"16","IL":"17","IN":"18","IA":"19","KS":"20","KY":"21","LA":"22","ME":"23","MD":"24","MA":"25","MI":"26","MN":"27","MS":"28","MO":"29","MT":"30","NE":"31","NV":"32","NH":"33","NJ":"34","NM":"35","NY":"36","NC":"37","ND":"38","OH":"39","OK":"40","OR":"41","PA":"42","RI":"44","SC":"45","SD":"46","TN":"47","TX":"48","UT":"49","VT":"50","VA":"51","WA":"53","WV":"54","WI":"55","WY":"56"};
 
@@ -527,9 +527,9 @@ function abbrToFullName(abbr) {
   return s ? s[0] : abbr;
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // CONFIG & STATE
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const SERVICE_ACCOUNT_EMAIL = [99,111,117,110,116,121,122,111,110,101,45,115,104,101,101,116,115,64,99,111,117,110,116,121,122,111,110,101,45,112,114,111,45,52,56,57,48,48,53,46,105,97,109,46,103,115,101,114,118,105,99,101,97,99,99,111,117,110,116,46,99,111,109].map(c=>String.fromCharCode(c)).join('');
 // Fill email display via JS to prevent Cloudflare obfuscation
 document.addEventListener('DOMContentLoaded', () => { const el = document.getElementById('serviceEmailEl'); if(el) el.textContent = SERVICE_ACCOUNT_EMAIL; });
@@ -577,9 +577,9 @@ const SRC_LINE    = '__draw_line';
 const SRC_PREVIEW = '__draw_preview';
 const SRC_VERTS   = '__draw_verts';
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // BUILD COLOR SWATCHES — runs immediately on parse
-// ═══════════════════════════════════════════════════════
+// =========================================================
 (function buildSwatches() {
   const row = document.getElementById('colorRow');
   COLORS.forEach((c, i) => {
@@ -596,9 +596,9 @@ const SRC_VERTS   = '__draw_verts';
   });
 })();
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // MAP STYLES
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const MAP_STYLES = [
   { id: 'mapbox://styles/mapbox/streets-v12',           label: '🗺 Streets'  },
   { id: 'mapbox://styles/mapbox/outdoors-v12',          label: '🌲 Outdoors' },
@@ -618,9 +618,9 @@ const HYBRID_IDX = 3;
   });
 })();
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // MAP INIT
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const map = new mapboxgl.Map({
   container: 'map',
   style: MAP_STYLES[HYBRID_IDX].id,
@@ -655,9 +655,9 @@ map.on('style.load', () => {
 map.on('zoomend', () => { if (polygons.length) { _refreshLabelMode(); } });
 map.on('moveend', () => { if (polygons.length) { _refreshLabelMode(); } });
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // DRAW LAYERS
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function _initDrawLayers() {
   function addSrc(id, type) {
     if (map.getSource(id)) return;
@@ -694,9 +694,9 @@ function _clearPreviews() {
   _setDrawSrc(SRC_VERTS, _emptyPts());
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // ZONE LAYER MANAGEMENT
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const _srcId  = id => 'zone-src-'  + id;
 const _fillId = id => 'zone-fill-' + id;
 const _lineId = id => 'zone-line-' + id;
@@ -721,10 +721,10 @@ function _removeZoneLayers(id) {
 }
 function _restoreAllZoneLayers() { polygons.forEach(p => _addZoneLayers(p)); }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // ZONE LABELS
 // Hierarchy: zoomed-out → county pill → zoom in → zone labels → click → notes
-// ═══════════════════════════════════════════════════════
+// =========================================================
 
 // Zoom threshold: below this = show county pills, at/above = show zone labels
 const COUNTY_PILL_ZOOM = 9;
@@ -853,9 +853,9 @@ function _rebuildAllLabels() {
   _refreshLabelMode();
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // DRAWING
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function pixelDist(a, b) {
   const pa = map.project(a), pb = map.project(b);
   return Math.hypot(pa.x-pb.x, pa.y-pb.y);
@@ -950,9 +950,9 @@ function _finishPolygon() {
   createPolygonAuto(pts, color);
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // LETTER MANAGEMENT — per county
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function _nextLetterForCounty(stateAbbr, countyName) {
   const used = new Set(
     polygons.filter(p => p.stateAbbr === stateAbbr && p.countyName === countyName).map(p => p.letter).filter(Boolean)
@@ -964,9 +964,9 @@ function _nextLetterForCounty(stateAbbr, countyName) {
   return null;
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // CREATE POLYGON (auto-named, no modal)
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function createPolygonAuto(pts, color) {
   const stateAbbr  = document.getElementById('stateSelect').value || '';
   const countyName = document.getElementById('countySelect').value || '';
@@ -991,9 +991,9 @@ function createPolygonAuto(pts, color) {
   showToast(`Zone ${letter} created — ${name}`, 'success');
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // ZONE PRICING EDITOR
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function openZoneDescModal(polyId) { openZoneEditor(polyId); } // alias for existing callers
 
 function openZoneEditor(polyId) {
@@ -1026,7 +1026,7 @@ function closeZoneEditor() {
 }
 
 
-// ── Fetch live spreadsheet name from Google Sheets API ──
+// -- Fetch live spreadsheet name from Google Sheets API --
 async function _fetchSheetName(sheetId) {
   // Only updates the modal's read-only sheet name field — never the sidebar
   try {
@@ -1042,7 +1042,7 @@ async function _fetchSheetName(sheetId) {
   } catch(e) {}
 }
 
-// ── Open sheets modal pre-set to a specific county ──
+// -- Open sheets modal pre-set to a specific county --
 function openSheetsModalForCounty(stateAbbr, countyName, e) {
   if (e) e.stopPropagation();
   // Switch to this county first
@@ -1060,7 +1060,7 @@ function openSheetsModalForCounty(stateAbbr, countyName, e) {
   }
 }
 
-// ── Share a single county via short URL ──
+// -- Share a single county via short URL --
 async function shareCounty(stateAbbr, countyName, e) {
   if (e) e.stopPropagation();
   const countyPolys = polygons.filter(p => p.stateAbbr === stateAbbr && p.countyName === countyName);
@@ -1095,7 +1095,7 @@ async function shareCounty(stateAbbr, countyName, e) {
   } catch(err) { showToast('Share failed: ' + err.message, 'error'); }
 }
 
-// ── Load zones from short share URL ──
+// -- Load zones from short share URL --
 async function loadZonesFromShareId(shareId) {
   try {
     const r = await fetch('/.netlify/functions/share-load?id=' + shareId);
@@ -1113,7 +1113,7 @@ async function loadZonesFromShareId(shareId) {
   } catch(e) { showToast('Could not load shared zones', 'error'); return false; }
 }
 
-// ── Save & Sync: save pricing + assign + write zones + sync pricing ──
+// -- Save & Sync: save pricing + assign + write zones + sync pricing --
 async function saveAndSyncZone() {
   if (!_editingDescId) return;
   const p = polygons.find(p => p.id === _editingDescId);
@@ -1213,7 +1213,7 @@ function saveZoneEditor() {
 
 }
 
-// ── Sync ALL zones pricing to sheet in one batch ──
+// -- Sync ALL zones pricing to sheet in one batch --
 async function syncAllPricingToSheet() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
@@ -1268,7 +1268,7 @@ async function syncAllPricingToSheet() {
   } catch(e) { showToast('Sync failed: ' + e.message, 'error'); }
 }
 
-// ── Table helpers ──────────────────────────────────────
+// -- Table helpers --------------------------------------
 function zeRenderRows(rows, defaultLetter) {
   const tbody = document.getElementById('zeTbody');
   tbody.innerHTML = '';
@@ -1313,9 +1313,9 @@ function zeCollectRows() {
 
 document.getElementById('zoneEditorModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeZoneEditor(); });
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // RENDER POLYGON LIST — Full State Name → County hierarchy
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function renderPolygonList() {
   document.getElementById('zoneCount').textContent = polygons.length;
   document.getElementById('statPolygons').textContent = polygons.length;
@@ -1434,9 +1434,9 @@ function renderPolygonList() {
   });
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // COUNTY NAVIGATION
-// ═══════════════════════════════════════════════════════
+// =========================================================
 async function navigateToCounty(stateAbbr, countyName) {
   const ss = document.getElementById('stateSelect');
   const cs = document.getElementById('countySelect');
@@ -1479,9 +1479,9 @@ async function loadCountyBoundaryOnly(stateAbbr, countyName) {
 }
 
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // CUSTOM CONFIRM DIALOGS
-// ═══════════════════════════════════════════════════════
+// =========================================================
 let _confirmResolve = null;
 
 function _showConfirm({ title, sub, okLabel = 'Delete', typePhrase = null }) {
@@ -1544,9 +1544,9 @@ document.getElementById('confirmTypeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !document.getElementById('confirmOkBtn').disabled) _closeConfirm(true);
 });
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // DELETE
-// ═══════════════════════════════════════════════════════
+// =========================================================
 async function deletePoly(id, skipConfirm) {
   const i = polygons.findIndex(p => p.id === id);
   if (i === -1) return;
@@ -1620,9 +1620,9 @@ async function clearAllZones() {
   showToast('All zones cleared', 'info');
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // PERSIST ZONES
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function _polyToJSON(p) {
   return { id:p.id, name:p.name, letter:p.letter||'', stateAbbr:p.stateAbbr||'', countyName:p.countyName||'',
            color:p.color, points:p.points, description:p.description||'', pricingTiers:p.pricingTiers||[], isRect:!!p._isRect, bounds:p._bounds||null };
@@ -1673,9 +1673,9 @@ function _loadZone(d) {
   return poly;
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // SAVE / LOAD ZONES FILE
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function saveZonesFile() {
   if (!polygons.length) { showToast('No zones to save', 'error'); return; }
   const blob = new Blob([JSON.stringify({ version:2, saved:new Date().toISOString(), zones:polygons.map(_polyToJSON) }, null, 2)], {type:'application/json'});
@@ -1711,9 +1711,9 @@ function importZonesFile(e) {
   reader.readAsText(file);
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // SHARE URL
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function shareURL() {
   if (!polygons.length) { showToast('Draw some zones first', 'error'); return; }
   const encoded = btoa(encodeURIComponent(JSON.stringify(polygons.map(_polyToJSON))));
@@ -1752,14 +1752,14 @@ function loadZonesFromURL() {
   } catch(e) { return false; }
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // SIDEBAR TOGGLE
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // GOOGLE SHEETS
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function openSheetsModal() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
@@ -1914,9 +1914,9 @@ function loadPropertiesFromFunction(props) {
   if (skipped) showToast(`${skipped} properties skipped — coordinates out of range`, 'info');
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // ZONE ASSIGNMENT
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function pointInPolygon(lat, lng, pts) {
   const x=lng,y=lat; let inside=false;
   for(let i=0,j=pts.length-1;i<pts.length;j=i++){
@@ -1984,9 +1984,9 @@ function _markerColor(m, c) { if (m) m.getElement().style.background = c; }
 
 // Pin toggle removed — pins disabled pending better implementation
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // EXPORT CSV
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function exportCSV() {
   if (!properties.length) { showToast('No properties to export', 'error'); return; }
   const zoneCol = sheetConfig.colZone || 'Zone';
@@ -2025,9 +2025,9 @@ function parseCSV(text) {
   return rows;
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // COUNTY BOUNDARY
-// ═══════════════════════════════════════════════════════
+// =========================================================
 const stateSelect = document.getElementById('stateSelect');
 STATES.forEach(([name, abbr]) => {
   const o = document.createElement('option'); o.value = abbr; o.textContent = name;
@@ -2152,9 +2152,9 @@ async function loadCounty() {
   } catch(e) { showToast('Could not load county boundary', 'error'); }
 }
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // HELPERS
-// ═══════════════════════════════════════════════════════
+// =========================================================
 function setConnected(v) {
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
@@ -2178,9 +2178,9 @@ function loadAppState() {
 
 document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeSheetsModal(); });
 
-// ═══════════════════════════════════════════════════════
+// =========================================================
 // INIT
-// ═══════════════════════════════════════════════════════
+// =========================================================
 map.on('load', () => {
   _initDrawLayers();
   const fromURL = loadZonesFromURL();
