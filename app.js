@@ -1292,6 +1292,9 @@ function copyShareURL() {
   const b = document.getElementById('shareBanner');
   navigator.clipboard.writeText(b.textContent.replace('🔗 ','')).then(() => { showToast('Copied!','success'); b.style.display='none'; });
 }
+function loadZonesFromURL() {
+  try {
+    const shareId = new URLSearchParams(window.location.search).get('share');
     if (shareId) {
       // Load from short share ID after map loads
       setTimeout(() => loadZonesFromShareId(shareId), 200);
