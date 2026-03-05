@@ -1722,28 +1722,37 @@ function _addCountyBoundaryForKey(key, geojson) {
   map.addLayer({ id:sid+'-fill', type:'fill', source:sid, paint:{'fill-color':'#000000','fill-opacity':0.08} });
   map.addLayer({ id:sid+'-line', type:'line', source:sid, paint:{'line-color':'#6600cc','line-width':2} });
   // Click boundary to switch to that county
-  map.on('click', sid+'-fill', (e) => {
+  map.on('click', sid+'-fill', async (e) => {
     if (drawMode === 'polygon') return; // don't switch while drawing
     const [sa, cn] = key.split('|');
     if (stateSelect.value === sa && document.getElementById('countySelect').value === cn) return;
-    // Set dropdowns immediately (synchronous) so UI reflects the click right away
+
+    // 1. Set state dropdown immediately
     stateSelect.value = sa;
     const cs = document.getElementById('countySelect');
-    // Optimistically set county — may not be in list yet if counties aren't loaded
-    cs.innerHTML = `<option value="${cn}" selected>${cn} County</option>`;
+
+    // 2. Fill county list synchronously from cache if available, else fetch
+    await loadCounties(true);
+
+    // 3. Set county dropdown — now the full list is populated
     cs.value = cn;
+    // If cn wasn't in the list (edge case), add it
+    if (cs.value !== cn) {
+      const o = document.createElement('option');
+      o.value = cn; o.textContent = cn + ' County';
+      cs.appendChild(o);
+      cs.value = cn;
+    }
+
+    // 4. Save state and update UI immediately
     saveAppState();
-    // Restore sheet config immediately
     const saved = _getSheetConfig(sa, cn);
     if (saved) { sheetConfig = saved; setConnected(true); }
     else { sheetConfig = null; setConnected(false); }
     renderPolygonList();
-    // Then do full async load (repopulates county list, fits bounds)
-    loadCounties(true).then(() => {
-      cs.value = cn;
-      saveAppState();
-      loadCounty();
-    });
+
+    // 5. Load boundary + fit map
+    loadCounty();
   });
   map.on('mouseenter', sid+'-fill', () => { if (drawMode !== 'polygon') map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', sid+'-fill', () => { if (drawMode !== 'polygon') map.getCanvas().style.cursor = ''; });
