@@ -1052,9 +1052,8 @@ async function loadCountyBoundaryOnly(stateAbbr, countyName) {
     if (_countyLayers[key]) return; // already loaded, don't reload
     const fips = STATE_FIPS[stateAbbr];
     if (!fips) return;
-    const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(countyName)}'&outFields=*&f=geojson`;
-    const geojson = await (await fetch(url)).json();
-    if (!geojson.features || !geojson.features.length) return;
+    const geojson = await _fetchCountyGeoJSON(fips, countyName);
+    if (!geojson) return;
     // Cache for validation use
     if (!_countyGeoJSONCache) _countyGeoJSONCache = {};
     _countyGeoJSONCache[key] = geojson;
@@ -1226,11 +1225,8 @@ async function _loadAllCountyBoundaries() {
     const [sa, cn] = key.split('|');
     const fips = STATE_FIPS[sa]; if (!fips) continue;
     try {
-      const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(cn)}'&outFields=*&f=geojson`;
-      const geojson = await (await fetch(url)).json();
-      if (geojson.features && geojson.features.length) {
-        _addCountyBoundaryForKey(key, geojson);
-      }
+      const geojson = await _fetchCountyGeoJSON(fips, cn);
+      if (geojson) { _addCountyBoundaryForKey(key, geojson); }
     } catch(e) {}
   }
 }
@@ -1739,6 +1735,25 @@ function _readdCountyLayer(geojson) {
   }
 }
 
+async function _fetchCountyGeoJSON(fips, countyName) {
+  // Try multiple Census endpoints in order — tigerWMS_Current is flaky
+  const name = encodeURIComponent(countyName);
+  const urls = [
+    `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${name}'&outFields=*&f=geojson`,
+    `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${name}'&outFields=*&f=geojson`,
+    `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_ACS2023/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${name}'&outFields=*&f=geojson`,
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (data.features && data.features.length) return data;
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
 async function loadCounty() {
   const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
   saveAppState(); if (!abbr||!county) return;
@@ -1746,9 +1761,8 @@ async function loadCounty() {
   showToast('Loading county boundary...', 'info');
   try {
     const fips = STATE_FIPS[abbr];
-    const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(county)}'&outFields=*&f=geojson`;
-    const geojson = await (await fetch(url)).json();
-    if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
+    const geojson = await _fetchCountyGeoJSON(fips, county);
+    if (!geojson) { showToast('County boundary not found','error'); return; }
     _pendingCountyGeoJSON = geojson;
     // Register in persistent keyed layers so it survives county switching
     const key = _countyKey(abbr, county);
