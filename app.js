@@ -1797,7 +1797,7 @@ async function loadCounty() {
     });
     map.fitBounds(bounds, { padding:60 });
     showToast(`${county} County loaded`, 'success');
-  } catch(e) { showToast('Could not load county boundary', 'error'); }
+  } catch(e) { showToast('Could not load county boundary: ' + e.message, 'error'); console.error('loadCounty error:', e); }
 }
 
 // =========================================================
