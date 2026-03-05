@@ -323,7 +323,14 @@ function _addZoneLabel(poly) {
   const el = document.createElement('div');
   el.className = 'zone-label';
   el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
-  el.setAttribute('data-tip', 'Open pricing panel');
+  // Tooltip on zone label
+  el.style.position = 'relative';
+  const _tip = document.createElement('span');
+  _tip.className = 'tip-box tip-box-up';
+  _tip.textContent = 'Open pricing panel';
+  _tip.style.whiteSpace = 'nowrap';
+  el.appendChild(_tip);
+  el.classList.add('tip-wrap');
   // Single click on zone label = open Notes & Pricing
   // Guard: do nothing if a county button was just clicked
   el.addEventListener('click', (e) => {
@@ -712,7 +719,8 @@ async function saveAndSyncZone() {
       });
       const pd = await pr.json();
       if (pd.properties && pd.properties.length) {
-        loadPropertiesFromFunction(pd.properties);
+        // Pass county explicitly so filter uses captured cn, not live dropdown
+        loadPropertiesFromFunction(pd.properties, cn);
         document.getElementById('statProperties').textContent = pd.properties.length;
       }
     } catch(e) { console.warn('Could not prefetch properties:', e); }
@@ -723,12 +731,13 @@ async function saveAndSyncZone() {
   showToast(`Zone ${p.letter} saved — syncing...`, 'info');
 
   try {
-    // 2. Run zone assignment
+    // 2. Run zone assignment — scoped to THIS county's polygons only
+    const countyPolygons = polygons.filter(poly => poly.stateAbbr === sa && poly.countyName === cn);
     const assignments = [];
     let assigned = 0;
     properties.forEach(prop => {
       prop.zone = null;
-      for (const poly of polygons) {
+      for (const poly of countyPolygons) {
         if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
           prop.zone = poly.letter;
           poly.propCount = (poly.propCount || 0) + 1;
@@ -739,6 +748,12 @@ async function saveAndSyncZone() {
       }
     });
     document.getElementById('statAssigned').textContent = assigned;
+    // Persist assigned count so it survives refresh
+    countyPolygons.forEach(poly => {
+      const matched = assignments.filter(a => a.zone === poly.letter).length;
+      poly.propCount = matched;
+    });
+    persistZones();
     renderPolygonList();
 
     // 3. Write zone letters to sheet
@@ -968,9 +983,9 @@ function renderPolygonList() {
       cStatus.dataset.state = stateAbbr;
       cStatus.dataset.county = countyName;
       if (isConnected) {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up tip-right">Manage sheet connected to ${countyName} County</span></span>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up tip-left">Manage sheet connected to ${countyName} County</span></span>`;
       } else {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up tip-right">Connect a sheet to ${countyName} County</span></span>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up tip-left">Connect a sheet to ${countyName} County</span></span>`;
       }
 
       cHdr.onclick = e => {
@@ -1485,7 +1500,7 @@ async function connectSheets() {
     showToast(`Connected: ${cn} County, ${sa} — ${data.properties.length} properties loaded`, 'success');
   } catch(e) { showToast('Connection failed: ' + e.message, 'error'); }
 }
-function loadPropertiesFromFunction(props) {
+function loadPropertiesFromFunction(props, countyOverride) {
   properties.forEach(p => { if (p.marker) p.marker.remove(); });
   properties = [];
   let skipped = 0;
@@ -1505,8 +1520,8 @@ function loadPropertiesFromFunction(props) {
     // US bounds: lat 18–72, lng -180 to -60
     if (lat < 18 || lat > 72 || lng < -180 || lng > -60) { skipped++; return; }
 
-    // Filter to selected county only
-    const _selCounty = document.getElementById('countySelect').value;
+    // Filter to selected county only — use explicit override if provided
+    const _selCounty = countyOverride || document.getElementById('countySelect').value;
     if (_selCounty && prop.county) {
       const propCounty = prop.county.toLowerCase().replace(' county','').trim();
       const selCounty  = _selCounty.toLowerCase().trim();
