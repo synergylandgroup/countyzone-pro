@@ -323,14 +323,8 @@ function _addZoneLabel(poly) {
   const el = document.createElement('div');
   el.className = 'zone-label';
   el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
-  // Tooltip on zone label
-  el.style.position = 'relative';
-  const _tip = document.createElement('span');
-  _tip.className = 'tip-box tip-box-up';
-  _tip.textContent = 'Open pricing panel';
-  _tip.style.whiteSpace = 'nowrap';
-  el.appendChild(_tip);
-  el.classList.add('tip-wrap');
+  // Tooltip on zone label — use title attr to avoid disrupting Mapbox marker layout
+  el.title = 'Open pricing panel';
   // Single click on zone label = open Notes & Pricing
   // Guard: do nothing if a county button was just clicked
   el.addEventListener('click', (e) => {
@@ -721,7 +715,7 @@ async function saveAndSyncZone() {
       if (pd.properties && pd.properties.length) {
         // Pass county explicitly so filter uses captured cn, not live dropdown
         loadPropertiesFromFunction(pd.properties, cn);
-        document.getElementById('statProperties').textContent = pd.properties.length;
+        document.getElementById('statProps').textContent = pd.properties.length;
       }
     } catch(e) { console.warn('Could not prefetch properties:', e); }
   }
@@ -731,8 +725,9 @@ async function saveAndSyncZone() {
   showToast(`Zone ${p.letter} saved — syncing...`, 'info');
 
   try {
-    // 2. Run zone assignment — scoped to THIS county's polygons only
-    const countyPolygons = polygons.filter(poly => poly.stateAbbr === sa && poly.countyName === cn);
+    // 2. Run zone assignment — scoped to THIS county's polygons only (case-insensitive)
+    const _cnNorm = cn.toLowerCase().trim();
+    const countyPolygons = polygons.filter(poly => poly.stateAbbr === sa && (poly.countyName||'').toLowerCase().trim() === _cnNorm);
     const assignments = [];
     let assigned = 0;
     properties.forEach(prop => {
@@ -983,9 +978,9 @@ function renderPolygonList() {
       cStatus.dataset.state = stateAbbr;
       cStatus.dataset.county = countyName;
       if (isConnected) {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up tip-left">Manage sheet connected to ${countyName} County</span></span>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up" style="left:50%;transform:translateX(-50%);white-space:normal;width:200px;">Manage sheet connected to ${countyName} County</span></span>`;
       } else {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up tip-left">Connect a sheet to ${countyName} County</span></span>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up" style="left:50%;transform:translateX(-50%);white-space:normal;width:200px;">Connect a sheet to ${countyName} County</span></span>`;
       }
 
       cHdr.onclick = e => {
@@ -1901,14 +1896,17 @@ map.on('load', () => {
           }).then(r => r.json()).then(data => {
             if (data.properties && data.properties.length) {
               loadPropertiesFromFunction(data.properties);
-              document.getElementById('statProperties').textContent = data.properties.length;
+              document.getElementById('statProps').textContent = data.properties.length;
 
-              // Assign properties to zones — wait until polygons are on the map
+              // Assign properties to zones — scoped to restored county, wait for polygons
               const _doAssign = () => {
+                const _rSA = appState.state;
+                const _rCN = (appState.county||'').toLowerCase().trim();
+                const _rPolys = polygons.filter(p => p.stateAbbr === _rSA && (p.countyName||'').toLowerCase().trim() === _rCN);
                 let assigned = 0;
                 properties.forEach(prop => {
                   prop.zone = null;
-                  for (const poly of polygons) {
+                  for (const poly of _rPolys) {
                     if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
                       prop.zone = poly.letter;
                       assigned++;
@@ -1918,7 +1916,7 @@ map.on('load', () => {
                 });
                 document.getElementById('statAssigned').textContent = assigned;
                 renderPolygonList();
-                persistZones(); // save with updated assignments
+                persistZones();
                 showToast(`Sheet reconnected — ${assigned} properties assigned`, 'success');
               };
 
