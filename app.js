@@ -123,8 +123,6 @@ function _setSheetConfig(stateAbbr, countyName, cfg) {
 let countySourceId = null;
 const _countyLayers = {}; // key -> sourceId for all counties with zones
 let _pendingCountyGeoJSON = null;
-let _countyGeoJSONCache = {}; // key: "stateAbbr|countyName"
-
 
 // Draw state
 let drawMode = null;
@@ -323,8 +321,8 @@ function _addZoneLabel(poly) {
   _removeZoneLabel(poly);
   const el = document.createElement('div');
   el.className = 'zone-label';
-
   el.innerHTML = `<span class="zl-letter" style="color:var(--zone-blue,#2c5282)">ZONE ${poly.letter||''}</span><span class="zl-name">${poly.name||''}</span>`;
+  el.setAttribute('data-tip', 'Click to open pricing panel');
   // Single click on zone label = open Notes & Pricing
   // Guard: do nothing if a county button was just clicked
   el.addEventListener('click', (e) => {
@@ -371,8 +369,8 @@ function _buildCountyPills() {
 
     const el = document.createElement('div');
     el.className = 'zone-cluster';
-    
     el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span>`;
+    el.title = `Click to zoom into ${county} County`;
 
     // Single click on county pill = zoom into county only, never open notes
     el.addEventListener('click', (e) => {
@@ -383,16 +381,8 @@ function _buildCountyPills() {
       const b = new mapboxgl.LngLatBounds();
       polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding: 100 });
+      // Load county boundary after map finishes animating
       const sa = polys[0].stateAbbr, cn = polys[0].countyName;
-      // Update dropdowns immediately
-      if (stateSelect.value !== sa) {
-        stateSelect.value = sa;
-        loadCounties().then(() => {
-          document.getElementById('countySelect').value = cn;
-        });
-      } else {
-        document.getElementById('countySelect').value = cn;
-      }
       map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
     });
 
@@ -500,15 +490,12 @@ function _finishPolygon() {
   const pts = drawPoints.slice();
   const color = selectedColor;
 
-  // Validate polygon is within selected county boundary — works at ALL zoom levels
-  const sa = stateSelect ? stateSelect.value : null;
-  const cn = document.getElementById('countySelect') ? document.getElementById('countySelect').value : null;
-  const cacheKey = sa && cn ? sa + '|' + cn : null;
-  const validationGeoJSON = _pendingCountyGeoJSON || (cacheKey ? _countyGeoJSONCache[cacheKey] : null);
-  if (validationGeoJSON) {
+  // Validate polygon is within selected county boundary
+  if (_pendingCountyGeoJSON) {
+    // Check if centroid of drawn polygon is within county
     const avgLng = pts.reduce((s,p) => s+p[0], 0) / pts.length;
     const avgLat = pts.reduce((s,p) => s+p[1], 0) / pts.length;
-    const inCounty = validationGeoJSON.features.some(f => {
+    const inCounty = _pendingCountyGeoJSON.features.some(f => {
       const coords = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
                    : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
       return coords.some(poly => pointInPolygon(avgLat, avgLng, poly[0].map(c => [c[0], c[1]])));
@@ -677,19 +664,10 @@ async function loadZonesFromShareId(shareId) {
     if (!data.zones) throw new Error('No zones in share');
     data.zones.forEach(d => _loadZone(d));
     renderPolygonList(); persistZones(); _rebuildAllLabels();
-    // Zoom to shared county zones only, not all polygons
-    const sharedZones = polygons.filter(p => p.stateAbbr === data.stateAbbr && p.countyName === data.countyName);
-    if (sharedZones.length) {
+    if (polygons.length) {
       const b = new mapboxgl.LngLatBounds();
-      sharedZones.forEach(p => p.points.forEach(pt => b.extend(pt)));
+      polygons.forEach(p => p.points.forEach(pt => b.extend(pt)));
       map.fitBounds(b, { padding:60 });
-      // Select county in dropdowns
-      if (stateSelect && data.stateAbbr) {
-        stateSelect.value = data.stateAbbr;
-        await loadCounties();
-        const countyEl = document.getElementById('countySelect');
-        if (countyEl) { countyEl.value = data.countyName; await loadCounty(); }
-      }
       showToast(`Loaded shared zones for ${data.countyName} County, ${data.stateAbbr}`, 'success');
     }
     return true;
@@ -955,11 +933,12 @@ function renderPolygonList() {
       const cHdr = document.createElement('div');
       cHdr.className = 'county-header';
       cHdr.innerHTML = `
-        <span class="county-name-text">${countyName} County</span>
-        <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
-        <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Copy link to ${countyName} County's page</span></span>
-        <span class="tip-wrap"><button class="county-action-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">⚙</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">${isConnected ? 'Manage sheet' : 'Connect a sheet'}</span></span>
-        <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete county zones</span></span>
+        <div class="county-header-pill">
+          <span class="county-name-text">${countyName} County</span>
+          <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
+          <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Copy and paste a shareable link to ${countyName} County's page</span></span>
+          <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete saved zones in ${countyName} County</span></span>
+        </div>
       `;
 
       // Sheet status row — clean, no gray background
@@ -968,18 +947,13 @@ function renderPolygonList() {
       cStatus.dataset.state = stateAbbr;
       cStatus.dataset.county = countyName;
       if (isConnected) {
-        cStatus.innerHTML = `
-          <span class="css-dot connected"></span>
-          <span class="css-name">Sheet Connected</span>
-          <button class="css-btn" style="margin-left:auto;color:var(--accent2);border-color:#f0c8c8" onclick="disconnectSheetForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">Disconnect</button>`;
+        cStatus.innerHTML = `<button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)" title="Manage sheet connected to ${countyName} County"><span class="spill-dot"></span>Sheet Connected</button>`;
       } else {
-        cStatus.innerHTML = `
-          <span class="css-dot"></span>
-          <span class="css-name not-connected">Not Connected</span>`;
+        cStatus.innerHTML = `<button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)" title="Connect a sheet to ${countyName} County"><span class="spill-dot"></span>No Sheet Connected</button>`;
       }
 
       cHdr.onclick = e => {
-        if (e.target.closest('.county-action-btn')) return;
+        if (e.target.closest('.county-action-btn') || e.target.closest('.spill')) return;
         navigateToCounty(stateAbbr, countyName);
       };
       cStatus.onclick = e => { e.stopPropagation(); };
@@ -997,7 +971,7 @@ function renderPolygonList() {
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
           <span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">⚙</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Open pricing panel</span></span>
-          <span class="tip-wrap"><button class="poly-btn delete-btn">✕</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete this zone</span></span>
+          <span class="tip-wrap"><button class="poly-btn delete-btn">✕</button><span class="tip-box tip-box-up" style="left:auto;right:0;transform:none;">Delete zone</span></span>
         `;
         div.querySelector('.notes-btn').addEventListener('click', e => { e.stopPropagation(); openZoneDescModal(p.id); });
         div.querySelector('.delete-btn').addEventListener('click', e => { e.stopPropagation(); deletePoly(p.id); });
@@ -1060,7 +1034,6 @@ async function loadCountyBoundaryOnly(stateAbbr, countyName) {
     const geojson = await (await fetch(url)).json();
     if (!geojson.features || !geojson.features.length) return;
     _pendingCountyGeoJSON = geojson;
-    _countyGeoJSONCache[stateAbbr + '|' + countyName] = geojson;
     _readdCountyLayer(geojson);
   } catch(e) {}
 }
@@ -1368,13 +1341,18 @@ function openSheetsModal() {
   const statusText = document.getElementById('smStatusText');
   const disconnectBtn = document.getElementById('smDisconnectBtn');
   if (existing && existing.sheetId) {
-    dot.className = 'css-dot connected';
+    dot.className = 'spill-dot';
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow = '0 0 4px rgba(46,138,90,0.4)';
     statusText.textContent = 'Sheet Connected';
     statusText.style.color = 'var(--green)';
     disconnectBtn.style.display = '';
   } else {
-    dot.className = 'css-dot';
-    statusText.textContent = 'Sheet Not Connected';
+    dot.className = 'spill-dot';
+    dot.style.background = 'var(--red)';
+    dot.style.boxShadow = '';
+    statusText.textContent = 'No Sheet Connected';
+    statusText.style.color = '#b94040';
     statusText.style.color = 'var(--muted)';
     disconnectBtn.style.display = 'none';
   }
@@ -1412,8 +1390,10 @@ function disconnectSheet() {
     setConnected(false);
   }
   // Reset modal status
-  document.getElementById('smDot').className = 'css-dot';
-  document.getElementById('smStatusText').textContent = 'Sheet Not Connected';
+  const _d = document.getElementById('smDot');
+  _d.style.background = '#b94040'; _d.style.boxShadow = '';
+  const _st = document.getElementById('smStatusText');
+  _st.textContent = 'No Sheet Connected'; _st.style.color = '#b94040';
   document.getElementById('smDisconnectBtn').style.display = 'none';
   document.getElementById('sheetId').value = '';
   renderPolygonList();
@@ -1745,7 +1725,6 @@ async function loadCounty() {
     const geojson = await (await fetch(url)).json();
     if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
     _pendingCountyGeoJSON = geojson;
-    _countyGeoJSONCache[abbr + '|' + county] = geojson;
     _readdCountyLayer(geojson);
     const bounds = new mapboxgl.LngLatBounds();
     geojson.features.forEach(f => {

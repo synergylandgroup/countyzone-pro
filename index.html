@@ -9,7 +9,7 @@
 <style>
   :root {
     --bg:#f6f7f9; --panel:#ffffff; --panel2:#eef0f4; --border:#dde1e9;
-    --accent:#5b7fa6; --zone-blue:#2c5282; --accent-light:#edf2f8; --accent2:#b94040; --green:#2d8a55; --yellow:#c49b2a;
+    --accent:#5b7fa6; --zone-blue:#2c5282; --accent-light:#edf2f8; --accent2:#b94040; --green:#2e8a5a; --red:#b94040; --yellow:#c49b2a;
     --text:#1a2332; --muted:#6b7d95; --font:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   html{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;}
@@ -73,28 +73,28 @@
 
   /* POLYGON LIST */
   .polygons-list{flex:1;overflow-y:auto;padding:9px;}
-  .polygon-item{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:8px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.15s;}
+  .polygon-item{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0 10px;height:30px;margin-bottom:2px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.15s;}
   .polygon-item:hover{border-color:var(--accent);}
   .poly-info{flex:1;min-width:0;}
-  .poly-name{font-size:12px;font-weight:700;color:var(--zone-blue);letter-spacing:0.05em;}
+  .poly-name{font-size:11px;font-weight:700;color:var(--zone-blue);letter-spacing:0.05em;}
   .poly-count{font-size:10px;color:var(--muted);}
-  .poly-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:3px;transition:color 0.12s;}
+  .poly-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:1px 2px;border-radius:3px;transition:color 0.12s;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;}
   .poly-btn:hover{color:var(--accent2);}
   .empty-state{text-align:center;color:var(--muted);font-size:12px;padding:24px 10px;line-height:1.8;}
 
   /* State → County hierarchy */
-  .state-group{margin-bottom:4px;}
+  .state-group{margin-bottom:0;}
   .state-header-wrap{padding:3px 8px;}
-  .state-header{background:#3d5068;border:none;border-radius:20px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:7px;font-weight:700;font-size:12px;transition:all 0.15s;user-select:none;}
+  .state-header{background:#3d5068;border:none;border-radius:20px;padding:0 12px;height:30px;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:700;font-size:11px;transition:background 0.15s;user-select:none;}
   .state-header:hover{background:#4a6070;}
-  .state-header .sg-arrow{font-size:9px;color:#a8bcd4;transition:transform 0.2s;display:inline-block;}
+  .state-header .sg-arrow{font-size:8px;color:#a8bcd4;transition:transform 0.2s;display:inline-block;}
   .state-header.open .sg-arrow{transform:rotate(90deg);}
   .state-header .sg-name{color:#e8edf5;flex:1;}
-  .state-header .sg-count{font-size:10px;font-weight:700;background:rgba(255,255,255,0.18);color:#e8edf5;padding:1px 8px;border-radius:8px;letter-spacing:0.04em;}
-  .state-counties{display:none;padding-left:12px;margin-top:1px;}
+  .state-header .sg-count{font-size:10px;font-weight:700;background:rgba(255,255,255,0.18);color:#e8edf5;padding:1px 7px;border-radius:7px;}
+  .state-counties{display:none;padding-left:0;margin-top:1px;}
   .state-counties.open{display:block;}
   .county-group{margin-bottom:0;}
-  .county-polys{padding:4px 8px 6px 8px;}
+  .county-polys{padding:3px 8px 4px 8px;}
 
   /* MAP */
   .map-wrap{position:relative;overflow:hidden;}
@@ -191,12 +191,7 @@
   .mapboxgl-popup-content{padding:0!important;background:transparent!important;box-shadow:none!important;}
   .mapboxgl-popup-tip{display:none!important;}
 
-  /* county-sheet-status defined below */
-  .css-dot{width:7px;height:7px;border-radius:50%;background:#d9534f;flex-shrink:0;}
-  .css-dot.connected{background:var(--green);box-shadow:0 0 5px rgba(45,138,85,0.4);}
-  /* css-name defined below */
-  .css-btn{background:none;border:1px solid var(--border);border-radius:12px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--muted);transition:all 0.15s;}
-  .css-btn:hover{border-color:var(--accent);color:var(--accent);}
+  /* status spill — replaces old css-dot/css-name/css-btn */
   .zone-file-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
   .zone-file-row .btn{flex:1;min-width:0;font-size:10px;padding:5px 6px;text-align:center;}
 
@@ -216,20 +211,24 @@
   #sidebarToggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;color:var(--muted);}
 
   /* COUNTY HEADER REDESIGN */
-  .county-header{padding:7px 10px 7px 12px;display:flex;align-items:center;gap:6px;cursor:pointer;background:#fff;}
-  .county-header:hover{background:var(--accent-light);}
-  .county-name-text{flex:1;font-size:12px;font-weight:600;color:var(--text);}
-  .county-zone-count{font-size:10px;color:var(--muted);font-weight:400;}
-  .county-action-btn{background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;color:var(--muted);transition:all 0.15s;flex-shrink:0;}
+  .county-header{padding:3px 8px;background:transparent;}
+  .county-header-pill{background:#dce6f0;border:1px solid #b8cfe0;border-radius:20px;padding:0 9px;height:30px;display:flex;align-items:center;gap:5px;cursor:pointer;transition:border-color 0.15s;}
+  .county-header-pill:hover{border-color:var(--accent);}
+  .county-name-text{flex:1;font-size:11px;font-weight:700;color:#2c4a6e;}
+  .county-zone-count{font-size:10px;color:var(--muted);font-weight:400;white-space:nowrap;}
+  .county-action-btn{background:none;border:1px solid #b8cfe0;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;color:var(--muted);transition:all 0.15s;flex-shrink:0;}
   .county-action-btn:hover{border-color:var(--accent);color:var(--accent);}
 
   /* COUNTY SHEET STATUS REDESIGN */
-  .county-sheet-status{display:flex;align-items:center;gap:6px;padding:2px 12px 6px 12px;background:#fff;}
-  .css-dot{width:7px;height:7px;border-radius:50%;background:#d9534f;flex-shrink:0;}
-  .css-dot.connected{background:var(--green);box-shadow:0 0 5px rgba(45,138,85,0.4);}
-  .css-name{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
-  .css-name.not-connected{color:#d9534f;}
-  .css-action-btns{display:flex;gap:4px;margin-left:6px;}
+  .county-sheet-status{display:flex;align-items:center;padding:3px 8px 4px 8px;background:transparent;}
+  .spill{width:120px;height:20px;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;border-radius:20px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid;font-family:var(--font);transition:background 0.15s;white-space:nowrap;background:#ffffff;}
+  .spill-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+  .spill.connected{border-color:var(--green);color:var(--green);}
+  .spill.connected .spill-dot{background:var(--green);box-shadow:0 0 3px rgba(46,138,90,0.4);}
+  .spill.connected:hover{background:#f0faf4;}
+  .spill.not-connected{border-color:var(--red);color:var(--red);}
+  .spill.not-connected .spill-dot{background:var(--red);}
+  .spill.not-connected:hover{background:#fdf0f0;}
 
   /* SHEETS MODAL REDESIGN */
   .sm-header{display:flex;align-items:center;margin-bottom:16px;}
@@ -365,8 +364,8 @@
 
     <!-- Connection Status -->
     <div class="sm-status-row" id="smStatusRow">
-      <span class="css-dot" id="smDot"></span>
-      <span style="font-size:11px;color:var(--muted)" id="smStatusText">Sheet Not Connected</span>
+      <span class="spill-dot" id="smDot" style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;"></span>
+      <span style="font-size:11px;font-weight:600;" id="smStatusText">Sheet Not Connected</span>
       <button class="sm-disconnect" id="smDisconnectBtn" onclick="disconnectSheet()" style="display:none">Disconnect</button>
     </div>
 
