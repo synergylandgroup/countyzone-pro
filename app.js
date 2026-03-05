@@ -701,6 +701,23 @@ async function saveAndSyncZone() {
     return;
   }
 
+  // If properties aren't loaded yet, fetch them first then proceed
+  if (!properties || !properties.length) {
+    showToast('Loading properties from sheet...', 'info');
+    try {
+      const pr = await fetch('/.netlify/functions/sheets-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset' }),
+      });
+      const pd = await pr.json();
+      if (pd.properties && pd.properties.length) {
+        loadPropertiesFromFunction(pd.properties);
+        document.getElementById('statProperties').textContent = pd.properties.length;
+      }
+    } catch(e) { console.warn('Could not prefetch properties:', e); }
+  }
+
   try {
     // 2. Run zone assignment
     const assignments = [];
@@ -936,7 +953,7 @@ function renderPolygonList() {
         <div class="county-header-pill">
           <span class="county-name-text">${countyName} County</span>
           <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
-          <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:160px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
+          <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:190px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
           <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up tip-right">Delete saved zones in ${countyName} County</span></span>
         </div>
       `;
@@ -1028,13 +1045,19 @@ async function zoomToZoneAndCounty(poly) {
 
 async function loadCountyBoundaryOnly(stateAbbr, countyName) {
   try {
+    const key = _countyKey(stateAbbr, countyName);
+    if (_countyLayers[key]) return; // already loaded, don't reload
     const fips = STATE_FIPS[stateAbbr];
     if (!fips) return;
     const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/82/query?where=STATE%3D'${fips}'%20AND%20BASENAME%3D'${encodeURIComponent(countyName)}'&outFields=*&f=geojson`;
     const geojson = await (await fetch(url)).json();
     if (!geojson.features || !geojson.features.length) return;
+    // Cache for validation use
+    if (!_countyGeoJSONCache) _countyGeoJSONCache = {};
+    _countyGeoJSONCache[key] = geojson;
     _pendingCountyGeoJSON = geojson;
-    _readdCountyLayer(geojson);
+    // Use persistent keyed layer — doesn't remove other county boundaries
+    _addCountyBoundaryForKey(key, geojson);
   } catch(e) {}
 }
 
@@ -1214,7 +1237,6 @@ function restoreZones() {
     const data = DB.loadZones();
     if (!data || !Array.isArray(data) || !data.length) return;
     data.forEach(d => _loadZone(d));
-    renderPolygonList();
     _rebuildAllLabels();
     showToast(`Restored ${data.length} zone${data.length>1?'s':''}`, 'success');
     setTimeout(() => _loadAllCountyBoundaries(), 500);
@@ -1765,16 +1787,17 @@ function loadAppState() {
 function toggleTooltips() {
   const isOff = document.body.classList.toggle('tooltips-off');
   DB.saveUI('tooltips_off', isOff);
+  _updateTooltipBtn(isOff);
+}
+function _updateTooltipBtn(isOff) {
   const btn = document.getElementById('tooltipToggleBtn');
   if (btn) btn.textContent = isOff ? '💬 Tooltips: Off' : '💬 Tooltips: On';
 }
 function _initTooltipToggle() {
   const isOff = DB.loadUI('tooltips_off', false);
-  if (isOff) {
-    document.body.classList.add('tooltips-off');
-    const btn = document.getElementById('tooltipToggleBtn');
-    if (btn) btn.textContent = '💬 Tooltips: Off';
-  }
+  if (isOff) document.body.classList.add('tooltips-off');
+  // Always set label on init so it reflects current state
+  setTimeout(() => _updateTooltipBtn(isOff), 0);
 }
 
 document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeSheetsModal(); });
