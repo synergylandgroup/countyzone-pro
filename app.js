@@ -1794,7 +1794,7 @@ function loadAppState() {
 // ── TOOLTIP TOGGLE ──────────────────────────────────────
 function toggleTooltips() {
   const isOff = document.body.classList.toggle('tooltips-off');
-  DB.saveUI('tooltips_off', isOff);
+  DB.saveUIState('tooltips_off', isOff);
   _updateTooltipBtn(isOff);
 }
 function _updateTooltipBtn(isOff) {
@@ -1802,7 +1802,7 @@ function _updateTooltipBtn(isOff) {
   if (btn) btn.textContent = isOff ? '💬 Tooltips: Off' : '💬 Tooltips: On';
 }
 function _initTooltipToggle() {
-  const isOff = DB.loadUI('tooltips_off', false);
+  const isOff = DB.loadUIState('tooltips_off', false);
   if (isOff) document.body.classList.add('tooltips-off');
   _updateTooltipBtn(isOff);
 }
