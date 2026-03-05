@@ -683,19 +683,18 @@ async function saveAndSyncZone() {
   const btn = document.getElementById('zeSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
 
-  // 1. Save locally
+  // 1. Save locally — capture state BEFORE closing modal
   p.description = document.getElementById('zeNotes').value.trim();
   p.pricingTiers = zeCollectRows();
   p.allZones = false;
-  persistZones();
-  closeZoneEditor();
-  showToast(`Zone ${p.letter} saved — syncing...`, 'info');
-
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
+  persistZones();
+
   const cfg = (sa && cn) ? (_getSheetConfig(sa, cn) || sheetConfig) : sheetConfig;
 
   if (!cfg || !cfg.sheetId) {
+    closeZoneEditor();
     showToast(`Zone ${p.letter} saved locally (no sheet connected)`, 'success');
     if (btn) { btn.disabled = false; btn.innerHTML = '💾 Save &amp; Sync'; }
     return;
@@ -717,6 +716,10 @@ async function saveAndSyncZone() {
       }
     } catch(e) { console.warn('Could not prefetch properties:', e); }
   }
+
+  // Now safe to close the modal — state/county captured above
+  closeZoneEditor();
+  showToast(`Zone ${p.letter} saved — syncing...`, 'info');
 
   try {
     // 2. Run zone assignment
@@ -964,9 +967,9 @@ function renderPolygonList() {
       cStatus.dataset.state = stateAbbr;
       cStatus.dataset.county = countyName;
       if (isConnected) {
-        cStatus.innerHTML = `<button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)" title="Manage sheet connected to ${countyName} County"><span class="spill-dot"></span>Sheet Connected</button>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up tip-right">Manage sheet connected to ${countyName} County</span></span>`;
       } else {
-        cStatus.innerHTML = `<button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)" title="Connect a sheet to ${countyName} County"><span class="spill-dot"></span>No Sheet Connected</button>`;
+        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up tip-right">Connect a sheet to ${countyName} County</span></span>`;
       }
 
       cHdr.onclick = e => {
@@ -1747,7 +1750,12 @@ async function loadCounty() {
     const geojson = await (await fetch(url)).json();
     if (!geojson.features||!geojson.features.length) { showToast('County boundary not found','error'); return; }
     _pendingCountyGeoJSON = geojson;
-    _readdCountyLayer(geojson);
+    // Register in persistent keyed layers so it survives county switching
+    const key = _countyKey(abbr, county);
+    if (!_countyGeoJSONCache) _countyGeoJSONCache = {};
+    _countyGeoJSONCache[key] = geojson;
+    _addCountyBoundaryForKey(key, geojson);
+    _readdCountyLayer(geojson); // also set countySourceId for validation
     const bounds = new mapboxgl.LngLatBounds();
     geojson.features.forEach(f => {
       const coords = f.geometry.type==='Polygon' ? f.geometry.coordinates.flat()
@@ -1796,8 +1804,7 @@ function _updateTooltipBtn(isOff) {
 function _initTooltipToggle() {
   const isOff = DB.loadUI('tooltips_off', false);
   if (isOff) document.body.classList.add('tooltips-off');
-  // Always set label on init so it reflects current state
-  setTimeout(() => _updateTooltipBtn(isOff), 0);
+  _updateTooltipBtn(isOff);
 }
 
 document.getElementById('sheetsModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeSheetsModal(); });
@@ -1807,7 +1814,7 @@ document.getElementById('sheetsModal').addEventListener('click', e => { if (e.ta
 // =========================================================
 map.on('load', () => {
   _initDrawLayers();
-  _initTooltipToggle();
+  _initTooltipToggle(); // sets body class and updates button label
 
   // Load sheet configs first so they're available during zone restore
   const _savedCfgs = DB.loadSheetConfigs();
