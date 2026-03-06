@@ -982,6 +982,14 @@ function renderPolygonList() {
       const countyOpenKey = 'county_open_' + stateAbbr + '_' + countyName;
       const isCountyOpen = DB.loadUIState(countyOpenKey, true); // default open
 
+      // Sheet connection icon SVG (green=connected, red=not connected)
+      const sheetIconSVG = isConnected
+        ? `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 2.5H2.5A1.5 1.5 0 0 0 1 4v13.5A1.5 1.5 0 0 0 2.5 19H16A1.5 1.5 0 0 0 17.5 17.5V12.5" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1H19v7.5" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 1L8 12" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 2.5H2.5A1.5 1.5 0 0 0 1 4v13.5A1.5 1.5 0 0 0 2.5 19H16A1.5 1.5 0 0 0 17.5 17.5V12.5" stroke="#b94040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1H19v7.5" stroke="#b94040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 1L8 12" stroke="#b94040" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+      const sheetIconTooltip = isConnected
+        ? `Manage sheet connected to ${countyName} County`
+        : `Connect a sheet to ${countyName} County`;
+
       const cHdr = document.createElement('div');
       cHdr.className = 'county-header';
       cHdr.innerHTML = `
@@ -989,29 +997,19 @@ function renderPolygonList() {
           <span class="ch-arrow">▶</span>
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
           <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:200px;">${sheetIconTooltip}</span></span>
           <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:190px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
           <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up tip-right">Delete saved zones in ${countyName} County</span></span>
         </div>
       `;
 
-      // Collapsible content wrapper (sheet status + zone rows)
+      // Collapsible content wrapper — zone rows only (sheet status pill removed)
       const cContent = document.createElement('div');
       cContent.className = 'county-content';
 
-      // Sheet status row
-      const cStatus = document.createElement('div');
-      cStatus.className = 'county-sheet-status';
-      cStatus.dataset.state = stateAbbr;
-      cStatus.dataset.county = countyName;
-      if (isConnected) {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>Sheet Connected</button><span class="tip-box tip-box-up" style="left:50%;transform:translateX(-50%);white-space:normal;width:200px;">Manage sheet connected to ${countyName} County</span></span>`;
-      } else {
-        cStatus.innerHTML = `<span class="tip-wrap"><button class="spill not-connected" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><span class="spill-dot"></span>No Sheet Connected</button><span class="tip-box tip-box-up" style="left:50%;transform:translateX(-50%);white-space:normal;width:200px;">Connect a sheet to ${countyName} County</span></span>`;
-      }
-
       // County pill click: arrow toggles collapse, rest navigates
       cHdr.onclick = e => {
-        if (e.target.closest('.county-action-btn') || e.target.closest('.spill')) return;
+        if (e.target.closest('.county-action-btn')) return;
         const pill = cHdr.querySelector('.county-header-pill');
         const isOpen = pill.classList.toggle('open');
         if (isOpen) {
@@ -1020,10 +1018,8 @@ function renderPolygonList() {
           cContent.style.maxHeight = '0';
         }
         DB.saveUIState(countyOpenKey, isOpen);
-        // Only navigate if clicking text area, not arrow
         if (!e.target.closest('.ch-arrow')) navigateToCounty(stateAbbr, countyName);
       };
-      cStatus.onclick = e => { e.stopPropagation(); };
 
       const polyDiv = document.createElement('div');
       polyDiv.className = 'county-polys';
@@ -1046,7 +1042,6 @@ function renderPolygonList() {
         polyDiv.appendChild(div);
       });
 
-      cContent.appendChild(cStatus);
       cContent.appendChild(polyDiv);
       cGroup.appendChild(cHdr);
       cGroup.appendChild(cContent);
