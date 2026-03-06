@@ -996,7 +996,7 @@ function renderPolygonList() {
         <div class="county-header-pill${isCountyOpen ? ' open' : ''}">
           <span class="ch-arrow">▶</span>
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
-          <span class="county-zone-count">${cPolys.length} zone${cPolys.length!==1?"s":""}</span>
+          <span class="county-zone-pill">${cPolys.length}</span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:200px;">${sheetIconTooltip}</span></span>
           <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:190px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
           <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up tip-right">Delete saved zones in ${countyName} County</span></span>
