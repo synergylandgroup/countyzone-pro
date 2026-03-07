@@ -961,12 +961,17 @@ function renderPolygonList() {
 
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
-    hdr.innerHTML = `<span class="sg-arrow">▶</span><span class="sg-name">${fullName}</span><span class="sg-count">${totalZones}</span>`;
+    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count">${totalZones}</span>`;
     hdr.onclick = e => {
-      if (!e.target.closest('.sg-arrow')) return; // only arrow toggles
-      hdr.classList.toggle('open');
-      countiesDiv.classList.toggle('open');
-      DB.saveUIState(stateOpenKey, hdr.classList.contains('open'));
+      if (e.target.closest('.state-arrow-zone')) {
+        // Arrow zone: toggle collapse
+        hdr.classList.toggle('open');
+        countiesDiv.classList.toggle('open');
+        DB.saveUIState(stateOpenKey, hdr.classList.contains('open'));
+      } else {
+        // Name zone: zoom to state
+        navigateToState(stateAbbr);
+      }
     };
 
     const countiesDiv = document.createElement('div');
@@ -995,7 +1000,7 @@ function renderPolygonList() {
       cHdr.className = 'county-header';
       cHdr.innerHTML = `
         <div class="county-header-pill${isCountyOpen ? ' open' : ''}">
-          <span class="ch-arrow">▶</span>
+          <span class="county-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
           <span class="county-zone-pill">${cPolys.length}</span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:200px;">${sheetIconTooltip}</span></span>
@@ -1011,14 +1016,15 @@ function renderPolygonList() {
       // County pill click: arrow toggles collapse, rest navigates
       cHdr.onclick = e => {
         if (e.target.closest('.county-action-btn')) return;
+        if (e.target.closest('.sheet-icon-btn')) return;
         const pill = cHdr.querySelector('.county-header-pill');
-        if (e.target.closest('.ch-arrow')) {
-          // Arrow only: toggle collapse
+        if (e.target.closest('.county-arrow-zone')) {
+          // Arrow zone: toggle collapse
           const isOpen = pill.classList.toggle('open');
           cContent.style.maxHeight = isOpen ? cContent.scrollHeight + 'px' : '0';
           DB.saveUIState(countyOpenKey, isOpen);
         } else {
-          // Name/rest of pill: navigate only
+          // Name zone: navigate to county
           navigateToCounty(stateAbbr, countyName);
         }
       };
@@ -1074,7 +1080,53 @@ function renderPolygonList() {
 // =========================================================
 // COUNTY NAVIGATION
 // =========================================================
+async function navigateToState(stateAbbr) {
+  // Reset county dropdown
+  const cs = document.getElementById('countySelect');
+  cs.value = '';
+  saveAppState();
+
+  // Remove existing state bbox layer if present
+  if (map.getLayer('state-boundary-fill')) map.removeLayer('state-boundary-fill');
+  if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
+  if (map.getSource('state-boundary')) map.removeSource('state-boundary');
+
+  try {
+    // Fetch state boundary from Census TIGER API
+    const fips = STATE_FIPS[stateAbbr];
+    if (!fips) return;
+    const url = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query?where=STATE='${fips}'&outFields=*&outSR=4326&f=geojson`;
+    const res = await fetch(url);
+    const geojson = await res.json();
+    if (!geojson.features || !geojson.features.length) return;
+
+    // Add white bounding box line
+    map.addSource('state-boundary', { type: 'geojson', data: geojson });
+    map.addLayer({ id: 'state-boundary-line', type: 'line', source: 'state-boundary',
+      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.9 }
+    });
+
+    // Fit map to state bounds
+    const bounds = new mapboxgl.LngLatBounds();
+    const extendBounds = (coords) => {
+      if (!Array.isArray(coords)) return;
+      if (typeof coords[0] === 'number') { bounds.extend(coords); return; }
+      coords.forEach(c => extendBounds(c));
+    };
+    geojson.features.forEach(f => extendBounds(f.geometry.coordinates));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
+
+  } catch(e) {
+    console.error('navigateToState error:', e);
+    showToast('Could not load state boundary', 'error');
+  }
+}
+
 async function navigateToCounty(stateAbbr, countyName) {
+  // Remove state bbox layer when navigating to county
+  if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
+  if (map.getSource('state-boundary')) map.removeSource('state-boundary');
+
   const ss = document.getElementById('stateSelect');
   const cs = document.getElementById('countySelect');
   ss.value = stateAbbr;

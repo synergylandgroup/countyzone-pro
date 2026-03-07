@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CountyZone Pro</title>
+<title>ParcelMatrix</title>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <style>
@@ -17,8 +17,9 @@
   body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:grid;grid-template-rows:64px 1fr;grid-template-columns:400px 1fr;overflow:hidden;}
 
   /* HEADER */
-  .logo{font-family:var(--font);font-size:21px;font-weight:700;letter-spacing:0.06em;color:var(--text);white-space:nowrap;}
-  .logo span{color:var(--zone-blue);}
+  .logo{font-family:var(--font);font-size:21px;font-weight:700;letter-spacing:0.06em;white-space:nowrap;}
+  .logo .parcel{color:#1a2332;}
+  .logo .matrix{color:#2c5282;}
   .hdiv{width:1px;height:22px;background:var(--border);flex-shrink:0;}
   .status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background 0.3s;flex-shrink:0;}
   .status-dot.on{background:var(--green);box-shadow:0 0 6px rgba(45,138,85,0.5);}
@@ -43,7 +44,7 @@
   aside{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:transform 0.3s;}
   .sidebar-section{padding:11px 15px;border-bottom:1px solid var(--border);flex-shrink:0;}
   .section-label{font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
-  select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:0 35px 0 14px;border-radius:20px;font-family:var(--font);font-size:14px;font-weight:700;outline:none;transition:border-color 0.15s;margin-bottom:6px;appearance:none;-webkit-appearance:none;height:38px;line-height:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7d95' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+  select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:0 35px 0 14px;border-radius:20px;font-family:var(--font);font-size:14px;font-weight:700;outline:none;transition:border-color 0.15s;margin-bottom:6px;appearance:none;-webkit-appearance:none;height:38px;line-height:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%236b7d95' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
   input[type="text"]{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:20px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
   textarea{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:10px;font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
   select:focus,input:focus,textarea:focus{border-color:var(--accent);}
@@ -86,15 +87,19 @@
   /* State → County hierarchy */
   .state-group{margin-bottom:0;}
   .state-header-wrap{padding:3px 15px;}
-  .state-header{background:#3d5068;border:none;border-radius:20px;padding:0 15px;height:38px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;transition:background 0.15s;user-select:none;}
+  .state-header{background:#3d5068;border:none;border-radius:20px;padding:0 12px 0 0;height:38px;cursor:pointer;display:flex;align-items:center;gap:0;font-weight:700;font-size:14px;transition:background 0.15s;user-select:none;overflow:hidden;}
   .state-header:hover{background:#4a6070;}
-  .state-header .sg-arrow{font-size:14px;color:#a8bcd4;transition:transform 0.2s;display:inline-flex;align-items:center;justify-content:center;width:18px;flex-shrink:0;}
+  .state-arrow-zone{width:44px;height:100%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
+  .state-arrow-zone svg{transition:transform 0.2s;}
+  .state-header.open .state-arrow-zone svg{transform:rotate(90deg);}
+  .county-arrow-zone{width:44px;height:100%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
+  .county-arrow-zone svg{transition:transform 0.2s;}
+  .county-header-pill.open .county-arrow-zone svg{transform:rotate(90deg);}
   .state-header.open .sg-arrow{transform:rotate(90deg);}
-  .ch-arrow{font-size:14px;color:#a8bcd4;transition:transform 0.2s;display:inline-flex;align-items:center;justify-content:center;width:18px;flex-shrink:0;align-self:center;line-height:1;}
-  .county-header-pill.open .ch-arrow{transform:rotate(90deg);}
+  .county-header-pill.open .county-arrow-zone svg{transform:rotate(90deg);}
   .county-content{overflow:hidden;transition:max-height 0.22s ease;}
   .county-content.collapsed{max-height:0!important;}
-  .state-header .sg-name{color:#e8edf5;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .state-header .sg-name{color:#e8edf5;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-left:4px;}
   .state-header .sg-count{font-size:13px;font-weight:700;background:rgba(255,255,255,0.18);color:#e8edf5;padding:2px 9px;border-radius:9px;}
   .state-counties{display:none;padding-left:0;margin-top:1px;}
   .state-counties.open{display:block;}
@@ -221,9 +226,9 @@
 
   /* COUNTY HEADER REDESIGN */
   .county-header{padding:3px 15px 3px 35px;background:transparent;}
-  .county-header-pill{background:#dce6f0;border:1px solid #b8cfe0;border-radius:20px;padding:0 11px;height:38px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:border-color 0.15s;}
+  .county-header-pill{background:#dce6f0;border:1px solid #b8cfe0;border-radius:20px;padding:0 11px 0 0;height:38px;display:flex;align-items:center;gap:0;cursor:pointer;transition:border-color 0.15s;overflow:hidden;}
   .county-header-pill:hover{border-color:var(--accent);}
-  .county-name-text{flex:1;font-size:14px;font-weight:700;color:#2c4a6e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;position:relative;}
+  .county-name-text{flex:1;font-size:14px;font-weight:700;color:#2c4a6e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;position:relative;margin-left:4px;}
   .county-name-text[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 6px);left:0;background:#1a2332;color:#e8f0fe;font-size:12px;font-weight:400;padding:5px 10px;border-radius:6px;white-space:nowrap;z-index:9999;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,0.22);}
   body.tooltips-off .county-name-text[title]:hover::after{display:none;}
   .county-zone-count{font-size:13px;color:var(--muted);font-weight:400;white-space:nowrap;}
@@ -273,7 +278,7 @@
 <header>
   <div class="header-logo">
     <button id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
-    <div class="logo">COUNTY<span>ZONE</span> <span style="color:var(--muted);font-weight:500">PRO</span></div>
+    <div class="logo"><span class="parcel">Parcel</span><span class="matrix">Matrix</span></div>
   </div>
   <div class="header-actions-right">
     <div class="tip-wrap" id="tooltipToggleWrap">
