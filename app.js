@@ -360,10 +360,27 @@ function _buildCountyPills() {
   });
 
   Object.entries(groups).forEach(([key, polys]) => {
-    // Centroid of all zone centers in county
-    const centers = polys.map(_polyCenter);
-    const lng = centers.reduce((s,c) => s+c[0], 0) / centers.length;
-    const lat = centers.reduce((s,c) => s+c[1], 0) / centers.length;
+    // Use county boundary centroid if available, else fall back to zone centroids
+    let lng, lat;
+    const cachedGeoJSON = _countyGeoJSONCache && _countyGeoJSONCache[key];
+    if (cachedGeoJSON && cachedGeoJSON.features && cachedGeoJSON.features.length) {
+      const bounds = new mapboxgl.LngLatBounds();
+      const extendB = (coords) => {
+        if (!Array.isArray(coords)) return;
+        if (typeof coords[0] === 'number') { bounds.extend(coords); return; }
+        coords.forEach(c => extendB(c));
+      };
+      cachedGeoJSON.features.forEach(f => extendB(f.geometry.coordinates));
+      if (!bounds.isEmpty()) {
+        const ctr = bounds.getCenter();
+        lng = ctr.lng; lat = ctr.lat;
+      }
+    }
+    if (lng === undefined) {
+      const centers = polys.map(_polyCenter);
+      lng = centers.reduce((s,c) => s+c[0], 0) / centers.length;
+      lat = centers.reduce((s,c) => s+c[1], 0) / centers.length;
+    }
 
     const county = polys[0].countyName || 'County';
     const st = polys[0].stateAbbr || '';
