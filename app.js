@@ -363,6 +363,7 @@ function _buildCountyPills() {
     // Use county boundary centroid if available, else fall back to zone centroids
     let lng, lat;
     const cachedGeoJSON = _countyGeoJSONCache && _countyGeoJSONCache[key];
+    console.log('[pill] key:', key, '| cache keys:', Object.keys(_countyGeoJSONCache), '| hit:', !!cachedGeoJSON);
     if (cachedGeoJSON && cachedGeoJSON.features && cachedGeoJSON.features.length) {
       const bounds = new mapboxgl.LngLatBounds();
       const extendB = (coords) => {
