@@ -1081,10 +1081,7 @@ function renderPolygonList() {
 // COUNTY NAVIGATION
 // =========================================================
 async function navigateToState(stateAbbr) {
-  // Reset county dropdown
-  const cs = document.getElementById('countySelect');
-  cs.value = '';
-  saveAppState();
+  // Do NOT saveAppState here — state zoom is visual only, don't clobber persisted county
 
   // Remove existing state bbox layer if present
   if (map.getLayer('state-boundary-fill')) map.removeLayer('state-boundary-fill');
@@ -1804,7 +1801,6 @@ async function loadCounties(silent) {
 function _removeCountyLayer() {
   if (!countySourceId) return;
   if (map.getLayer(countySourceId+'-fill')) map.removeLayer(countySourceId+'-fill');
-  if (map.getLayer(countySourceId+'-halo')) map.removeLayer(countySourceId+'-halo');
   if (map.getLayer(countySourceId+'-line')) map.removeLayer(countySourceId+'-line');
   if (map.getSource(countySourceId))        map.removeSource(countySourceId);
   countySourceId = null;
