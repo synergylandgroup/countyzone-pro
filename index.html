@@ -38,6 +38,10 @@
   .btn-danger:hover{background:#fff;border-color:var(--accent2);}
   .btn-ghost{background:#fff;color:var(--muted);border:1px solid var(--border);}
   .btn-toolbar{font-size:11px;width:110px;text-align:center;justify-content:center;display:inline-flex;align-items:center;padding:6px 0;}
+  .btn-icon-toolbar{width:36px;height:36px;border-radius:8px;border:1px solid transparent;background:none;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background 0.15s,border-color 0.15s,color 0.15s;}
+  .btn-icon-toolbar:hover{background:var(--panel2);border-color:var(--border);color:var(--text);}
+  .btn-icon-toolbar.active{color:#2c5282;background:#e8edf5;border-color:#b8cfe0;}
+  .btn-icon-toolbar.active:hover{background:#dce6f0;}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:#fff;}
 
   /* SIDEBAR */
@@ -111,11 +115,16 @@
   #map{width:100%;height:100%;}
   #drawHint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:12px;padding:10px 18px;border-radius:20px;box-shadow:0 2px 12px rgba(91,127,166,0.18);z-index:10;display:none;pointer-events:none;white-space:nowrap;}
   #mapControls{position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;align-items:center;}
-  #styleSelect{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 30px 6px 14px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;outline:none;color:var(--muted);letter-spacing:0.04em;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:0;width:auto;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7d95' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:all 0.15s;}
-  #styleSelect:hover{border-color:var(--accent);color:var(--accent);}
-  #styleSelect option{background:var(--panel);color:var(--text);}
-  #northBtn{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);letter-spacing:0.04em;box-shadow:0 2px 8px rgba(0,0,0,0.08);white-space:nowrap;transition:all 0.15s;}
-  #northBtn:hover{border-color:var(--accent);color:var(--accent);}
+  #stylePicker{background:var(--panel);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);color:var(--muted);transition:all 0.15s;position:relative;}
+  #stylePicker:hover{border-color:var(--accent);color:var(--accent);}
+  #styleDropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:6px;display:none;flex-direction:column;gap:2px;min-width:130px;z-index:100;}
+  #styleDropdown.open{display:flex;}
+  .style-option{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);transition:background 0.1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);}
+  .style-option:hover{background:var(--panel2);}
+  .style-option.active{background:#e8edf5;color:#2c5282;}
+  .mapboxgl-ctrl-north{display:block;}
+  .north-ctrl-btn{width:29px;height:29px;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.1s;}
+  .north-ctrl-btn:hover{background:#f0f0f0;}
   #sidebarToggle{display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;}
   #shareBanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.97);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:11px;padding:10px 16px;border-radius:20px;z-index:10;display:none;max-width:90%;text-align:center;cursor:pointer;}
 
@@ -282,15 +291,22 @@
   </div>
   <div class="header-actions-right">
     <div class="tip-wrap" id="tooltipToggleWrap">
-      <button class="btn btn-ghost btn-toolbar" id="tooltipToggleBtn" onclick="toggleTooltips()">💬 Tooltips: On</button>
+      <button class="btn-icon-toolbar active" id="tooltipToggleBtn" onclick="toggleTooltips()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
       <span class="tip-box tip-right">Toggle tooltips on/off</span>
     </div>
     <div class="tip-wrap">
-      <button class="btn btn-ghost btn-toolbar" onclick="saveZonesFile()">💾 Save Zones</button>
-<span class="tip-box" style="left:auto;right:0;transform:none;white-space:normal;width:180px;">Exports all saved zones across the map to a downloadable JSON file, which can later be reloaded to restore every zone and its associated data.</span>    </div>
+      <button class="btn-icon-toolbar" onclick="saveZonesFile()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </button>
+      <span class="tip-box tip-right" style="white-space:normal;width:180px;">Export saved zones to a JSON file to later reload all data.</span>
+    </div>
     <div class="tip-wrap">
-      <button class="btn btn-ghost btn-toolbar" onclick="loadZonesFile()">📂 Load Zones</button>
-      <span class="tip-box" style="left:auto;right:0;transform:none;white-space:normal;width:200px;">Reloads zones from a previously saved JSON file, restoring all zones and their associated data.</span>
+      <button class="btn-icon-toolbar" onclick="loadZonesFile()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+      </button>
+      <span class="tip-box tip-right" style="white-space:normal;width:200px;">Upload zones from a JSON file restoring all data.</span>
     </div>
     <input type="file" id="zoneFileInput" accept=".json" style="display:none" onchange="importZonesFile(event)">
   </div>
@@ -302,6 +318,7 @@
     <div class="section-label">Location</div>
     <select id="stateSelect" onchange="loadCounties()"><option value="">— Select State —</option></select>
     <select id="countySelect" onchange="loadCounty()"><option value="">— Select County —</option></select>
+    <div class="help-tip" id="drawHelp">Select a state &amp; county first to create pricing zones.</div>
   </div>
 
   <!-- STATS BAR -->
@@ -314,10 +331,10 @@
 
   <!-- CREATE ZONES -->
   <div class="sidebar-section">
-    <div class="section-label">Create Zones</div>
+    <div class="section-label">Create Pricing Zones</div>
     <button class="draw-btn" id="btnPolygon" onclick="startDraw('polygon')"><span style="font-size:14px">⬡</span> Draw Polygon</button>
     <button class="cancel-btn" id="btnCancel" onclick="cancelDraw()">✕ Cancel Drawing</button>
-    <div class="help-tip" id="drawHelp">Select a state &amp; county above, then click Draw Polygon.</div>
+
     <div class="section-label" style="margin-top:10px">Zone Color</div>
     <div class="color-row" id="colorRow"></div>
 
@@ -337,13 +354,9 @@
 <div class="map-wrap">
   <div id="map"></div>
   <div id="mapControls">
-    <div class="tip-wrap">
-      <button id="northBtn" onclick="resetNorth()">⬆ North</button>
-      <span class="tip-box">Reset map to face North</span>
-    </div>
-    <div class="tip-wrap">
-      <select id="styleSelect" onchange="changeMapStyle(this.value)"></select>
-      <span class="tip-box">Switch map style</span>
+    <div id="stylePicker">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      <div id="styleDropdown"></div>
     </div>
   </div>
   <div id="drawHint"></div>

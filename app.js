@@ -162,22 +162,48 @@ const SRC_VERTS   = '__draw_verts';
 // MAP STYLES
 // =========================================================
 const MAP_STYLES = [
-  { id: 'mapbox://styles/mapbox/streets-v12',           label: '🗺 Streets'  },
-  { id: 'mapbox://styles/mapbox/outdoors-v12',          label: '🌲 Outdoors' },
-  { id: 'mapbox://styles/mapbox/satellite-v9',          label: '🛰 Satellite'},
-  { id: 'mapbox://styles/mapbox/satellite-streets-v12', label: '🛰 Hybrid'   },
-  { id: 'mapbox://styles/mapbox/light-v11',             label: '☁️ Light'    },
-  { id: 'mapbox://styles/mapbox/dark-v11',              label: '🌙 Dark'     },
+  { id: 'mapbox://styles/mapbox/streets-v12',           label: 'Streets'   },
+  { id: 'mapbox://styles/mapbox/outdoors-v12',          label: 'Outdoors'  },
+  { id: 'mapbox://styles/mapbox/satellite-v9',          label: 'Satellite' },
+  { id: 'mapbox://styles/mapbox/satellite-streets-v12', label: 'Hybrid'    },
 ];
 const HYBRID_IDX = 3;
 (function buildStyleSelect() {
-  const el = document.getElementById('styleSelect');
-  MAP_STYLES.forEach((s, i) => {
-    const o = document.createElement('option');
-    o.value = i; o.textContent = s.label;
-    if (i === HYBRID_IDX) o.selected = true;
-    el.appendChild(o);
+  // Build style dropdown
+  let _activeStyleIdx = HYBRID_IDX;
+  const _styleDropdown = document.getElementById('styleDropdown');
+  const _stylePicker = document.getElementById('stylePicker');
+
+  const STYLE_ICONS = [
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-8 4 4 4-6 4 10"/></svg>`,
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+  ];
+
+  function _buildStyleDropdown() {
+    _styleDropdown.innerHTML = '';
+    MAP_STYLES.forEach((s, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'style-option' + (i === _activeStyleIdx ? ' active' : '');
+      btn.innerHTML = STYLE_ICONS[i] + ' ' + s.label + (i === _activeStyleIdx ? ' ✓' : '');
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        _activeStyleIdx = i;
+        changeMapStyle(i);
+        _styleDropdown.classList.remove('open');
+        _buildStyleDropdown();
+      };
+      _styleDropdown.appendChild(btn);
+    });
+  }
+  _buildStyleDropdown();
+
+  _stylePicker.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _styleDropdown.classList.toggle('open');
   });
+  document.addEventListener('click', () => _styleDropdown.classList.remove('open'));
 })();
 
 // =========================================================
@@ -195,14 +221,30 @@ const map = new mapboxgl.Map({
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'imperial' }), 'bottom-left');
 
+// Custom North button control — sits above NavigationControl in bottom-right
+class NorthControl {
+  onAdd(map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    this._btn = document.createElement('button');
+    this._btn.className = 'north-ctrl-btn';
+    this._btn.title = 'Reset to North';
+    this._btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M47.655 1.634L50 16V73.5L19.89 91.461L12.655 98.614c-.828 2.24 1.659 4.255 3.68 2.98L50 80.386z" fill="#5b7fa6"/><path d="M52.345 1.634L50 16V73.5L80.11 91.461l7.235 7.153c2.02 1.271 4.503-.74 3.678-2.98l-35-95C55.907.514 55.163.006 54 .008z" fill="#b8cfe0"/><circle cx="50" cy="73" r="5" fill="#6b7d95"/></svg>`;
+    this._btn.onclick = () => map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
+    this._container.appendChild(this._btn);
+    return this._container;
+  }
+  onRemove() { this._container.parentNode.removeChild(this._container); this._map = undefined; }
+}
+map.addControl(new NorthControl(), 'bottom-right');
+
 function resetNorth() { map.easeTo({ bearing: 0, pitch: 0, duration: 500 }); }
-map.on('rotate', () => {
-  document.getElementById('northBtn').style.opacity = Math.abs(map.getBearing()) > 1 ? '1' : '0.6';
-});
 
 function changeMapStyle(idx) {
   polygons.forEach(p => _removeZoneLabel(p));
   map.setStyle(MAP_STYLES[parseInt(idx)].id);
+  _activeStyleIdx = parseInt(idx);
 }
 
 map.on('style.load', () => {
@@ -1016,10 +1058,10 @@ function renderPolygonList() {
       const countyOpenKey = 'county_open_' + stateAbbr + '_' + countyName;
       const isCountyOpen = DB.loadUIState(countyOpenKey, true); // default open
 
-      // Sheet connection icon SVG (green=connected, red=not connected)
+      // Sheet connection icon SVG (green=connected, red=not connected) — Option B: document + rows
       const sheetIconSVG = isConnected
-        ? `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 2.5H2.5A1.5 1.5 0 0 0 1 4v13.5A1.5 1.5 0 0 0 2.5 19H16A1.5 1.5 0 0 0 17.5 17.5V12.5" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1H19v7.5" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 1L8 12" stroke="#2e8a5a" stroke-width="1.8" stroke-linecap="round"/></svg>`
-        : `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 2.5H2.5A1.5 1.5 0 0 0 1 4v13.5A1.5 1.5 0 0 0 2.5 19H16A1.5 1.5 0 0 0 17.5 17.5V12.5" stroke="#b94040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1H19v7.5" stroke="#b94040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 1L8 12" stroke="#b94040" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+        ? `<svg width="17" height="17" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2h7l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="#2e8a5a" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 2v5h5" stroke="#2e8a5a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="10" x2="14" y2="10" stroke="#2e8a5a" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="13" x2="14" y2="13" stroke="#2e8a5a" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="16" x2="11" y2="16" stroke="#2e8a5a" stroke-width="1.4" stroke-linecap="round"/></svg>`
+        : `<svg width="17" height="17" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2h7l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="#b94040" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 2v5h5" stroke="#b94040" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="10" x2="14" y2="10" stroke="#b94040" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="13" x2="14" y2="13" stroke="#b94040" stroke-width="1.4" stroke-linecap="round"/><line x1="6" y1="16" x2="11" y2="16" stroke="#b94040" stroke-width="1.4" stroke-linecap="round"/></svg>`;
       const sheetIconTooltip = isConnected
         ? `Manage sheet connected to ${countyName} County`
         : `Connect a sheet to ${countyName} County`;
@@ -1032,8 +1074,8 @@ function renderPolygonList() {
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
           <span class="county-zone-pill">${cPolys.length}</span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:200px;">${sheetIconTooltip}</span></span>
-          <span class="tip-wrap"><button class="county-action-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🔗</button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:190px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
-          <span class="tip-wrap"><button class="county-action-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">🗑</button><span class="tip-box tip-box-up tip-right">Delete saved zones in ${countyName} County</span></span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-box-up tip-right" style="white-space:normal;width:190px;">Copy and paste a shareable link to ${countyName} County's page</span></span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-box-up tip-right">Delete saved zones in ${countyName} County</span></span>
         </div>
       `;
 
@@ -2040,7 +2082,7 @@ function toggleTooltips() {
 }
 function _updateTooltipBtn(isOff) {
   const btn = document.getElementById('tooltipToggleBtn');
-  if (btn) btn.textContent = isOff ? '💬 Tooltips: Off' : '💬 Tooltips: On';
+  if (btn) btn.classList.toggle('active', !isOff);
 }
 function _initTooltipToggle() {
   const isOff = DB.loadUIState('tooltips_off', false);
