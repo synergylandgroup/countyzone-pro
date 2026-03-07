@@ -1980,6 +1980,8 @@ async function loadCounty() {
     _countyGeoJSONCache[key] = geojson;
     _addCountyBoundaryForKey(key, geojson);
     _readdCountyLayer(geojson); // also set countySourceId for validation
+    // Rebuild county pills now that GeoJSON is cached — ensures centroid uses county bounds
+    if (polygons.length) _rebuildAllLabels();
     // Remove keyed layers for counties with no zones (run AFTER new county is registered)
     Object.keys(_countyLayers).forEach(k => {
       if (k === key) return; // keep the current county
