@@ -1959,6 +1959,17 @@ async function loadCounty() {
   const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
   saveAppState(); if (!abbr||!county) return;
   _removeCountyLayer();
+  // Remove any keyed county boundary layers that have no zones (e.g. previously selected but never drawn in)
+  Object.keys(_countyLayers).forEach(key => {
+    const hasZones = polygons.some(p => _countyKey(p.stateAbbr, p.countyName) === key);
+    if (!hasZones) {
+      const sid = _countyLayers[key];
+      if (map.getLayer(sid+'-fill')) map.removeLayer(sid+'-fill');
+      if (map.getLayer(sid+'-line')) map.removeLayer(sid+'-line');
+      if (map.getSource(sid)) map.removeSource(sid);
+      delete _countyLayers[key];
+    }
+  });
   showToast('Loading county boundary...', 'info');
   try {
     const fips = STATE_FIPS[abbr];
