@@ -416,10 +416,20 @@ function _buildCountyPills() {
       else { sheetConfig = null; setConnected(false); }
       renderPolygonList();
 
-      // Zoom to county bounds
+      // Zoom to county bounds from GeoJSON cache if available, else use zone bounds
+      const _ck = _countyKey(sa, cn);
+      const _cg = _countyGeoJSONCache && _countyGeoJSONCache[_ck];
       const b = new mapboxgl.LngLatBounds();
-      polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
-      map.fitBounds(b, { padding: 100 });
+      if (_cg && _cg.features && _cg.features.length) {
+        _cg.features.forEach(f => {
+          const coords = f.geometry.type==='Polygon' ? f.geometry.coordinates.flat()
+                       : f.geometry.type==='MultiPolygon' ? f.geometry.coordinates.flat(2) : [];
+          coords.forEach(c => b.extend(c));
+        });
+      } else {
+        polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
+      }
+      map.fitBounds(b, { padding: 60 });
       map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
     });
 
@@ -1959,17 +1969,6 @@ async function loadCounty() {
   const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
   saveAppState(); if (!abbr||!county) return;
   _removeCountyLayer();
-  // Remove any keyed county boundary layers that have no zones (e.g. previously selected but never drawn in)
-  Object.keys(_countyLayers).forEach(key => {
-    const hasZones = polygons.some(p => _countyKey(p.stateAbbr, p.countyName) === key);
-    if (!hasZones) {
-      const sid = _countyLayers[key];
-      if (map.getLayer(sid+'-fill')) map.removeLayer(sid+'-fill');
-      if (map.getLayer(sid+'-line')) map.removeLayer(sid+'-line');
-      if (map.getSource(sid)) map.removeSource(sid);
-      delete _countyLayers[key];
-    }
-  });
   showToast('Loading county boundary...', 'info');
   try {
     const fips = STATE_FIPS[abbr];
@@ -1981,6 +1980,18 @@ async function loadCounty() {
     _countyGeoJSONCache[key] = geojson;
     _addCountyBoundaryForKey(key, geojson);
     _readdCountyLayer(geojson); // also set countySourceId for validation
+    // Remove keyed layers for counties with no zones (run AFTER new county is registered)
+    Object.keys(_countyLayers).forEach(k => {
+      if (k === key) return; // keep the current county
+      const hasZones = polygons.some(p => _countyKey(p.stateAbbr, p.countyName) === k);
+      if (!hasZones) {
+        const sid = _countyLayers[k];
+        if (map.getLayer(sid+'-fill')) map.removeLayer(sid+'-fill');
+        if (map.getLayer(sid+'-line')) map.removeLayer(sid+'-line');
+        if (map.getSource(sid)) map.removeSource(sid);
+        delete _countyLayers[k];
+      }
+    });
     const bounds = new mapboxgl.LngLatBounds();
     geojson.features.forEach(f => {
       const coords = f.geometry.type==='Polygon' ? f.geometry.coordinates.flat()
