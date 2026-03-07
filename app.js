@@ -1103,7 +1103,7 @@ async function navigateToState(stateAbbr) {
     // Add white bounding box line
     map.addSource('state-boundary', { type: 'geojson', data: geojson });
     map.addLayer({ id: 'state-boundary-line', type: 'line', source: 'state-boundary',
-      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.9 }
+      paint: { 'line-color': '#f9c74f', 'line-width': 2, 'line-opacity': 0.9 }
     });
 
     // Fit map to state bounds
