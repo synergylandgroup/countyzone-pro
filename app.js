@@ -22,34 +22,34 @@ const DB = {
   // -- Zones ------------------------------------------
   saveZones(zones) {
     // SUPABASE: await supabase.from('zones').upsert({ user_id, data: zones })
-    try { localStorage.setItem('geofence_zones', JSON.stringify(zones)); } catch(e) {}
+    try { localStorage.setItem('lv_zones', JSON.stringify(zones)); } catch(e) {}
   },
 
   loadZones() {
     // SUPABASE: const { data } = await supabase.from('zones').select('data').eq('user_id', user_id).single()
-    try { const r = localStorage.getItem('geofence_zones'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+    try { const r = localStorage.getItem('lv_zones'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
   // -- Sheet Configs -----------------------------------
   saveSheetConfigs(configs) {
     // SUPABASE: await supabase.from('sheet_configs').upsert({ user_id, configs })
-    try { localStorage.setItem('geofence_sheet_configs', JSON.stringify(configs)); } catch(e) {}
+    try { localStorage.setItem('lv_sheet_configs', JSON.stringify(configs)); } catch(e) {}
   },
 
   loadSheetConfigs() {
     // SUPABASE: const { data } = await supabase.from('sheet_configs').select('configs').eq('user_id', user_id).single()
-    try { const r = localStorage.getItem('geofence_sheet_configs'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+    try { const r = localStorage.getItem('lv_sheet_configs'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
   // -- App State ---------------------------------------
   saveAppState(state) {
     // SUPABASE: await supabase.from('app_state').upsert({ user_id, ...state })
-    try { localStorage.setItem('geofence_app_state', JSON.stringify(state)); } catch(e) {}
+    try { localStorage.setItem('lv_app_state', JSON.stringify(state)); } catch(e) {}
   },
 
   loadAppState() {
     // SUPABASE: const { data } = await supabase.from('app_state').select('*').eq('user_id', user_id).single()
-    try { const r = localStorage.getItem('geofence_app_state'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+    try { const r = localStorage.getItem('lv_app_state'); return r ? JSON.parse(r) : null; } catch(e) { return null; }
   },
 
   // -- County List Cache -------------------------------
@@ -69,11 +69,11 @@ const DB = {
   // -- UI State (collapse/expand) ----------------------
   // SUPABASE: await supabase.from('ui_state').upsert({ user_id, key, value })
   saveUIState(key, value) {
-    try { localStorage.setItem('czp_ui_'+key, JSON.stringify(value)); } catch(e) {}
+    try { localStorage.setItem('lv_ui_'+key, JSON.stringify(value)); } catch(e) {}
   },
 
   loadUIState(key, fallback = null) {
-    try { const r = localStorage.getItem('czp_ui_'+key); return r !== null ? JSON.parse(r) : fallback; } catch(e) { return fallback; }
+    try { const r = localStorage.getItem('lv_ui_'+key); return r !== null ? JSON.parse(r) : fallback; } catch(e) { return fallback; }
   },
 };
 
@@ -1471,7 +1471,7 @@ function saveZonesFile() {
   const blob = new Blob([JSON.stringify({ version:2, saved:new Date().toISOString(), zones:polygons.map(_polyToJSON) }, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `countyzone-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `landvaluator-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   showToast('Zones file downloaded!', 'success');
 }
@@ -1996,7 +1996,7 @@ async function _fetchCountyGeoJSON(fips, countyName) {
     const stateName = stateNames[fips];
     if (stateName) {
       const url = `https://nominatim.openstreetmap.org/search?county=${encodeURIComponent(countyName)}&state=${encodeURIComponent(stateName)}&country=USA&format=geojson&polygon_geojson=1&limit=1`;
-      const r = await fetch(url, { headers: { 'User-Agent': 'CountyZonePro/1.0' } });
+      const r = await fetch(url, { headers: { 'User-Agent': 'LandValuator/1.0' } });
       if (r.ok) {
         const data = await r.json();
         if (data.features && data.features.length) {
