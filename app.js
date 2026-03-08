@@ -1065,8 +1065,25 @@ function renderPolygonList() {
         // Arrow zone: toggle collapse
         hdr.classList.toggle('open');
         const isOpen = hdr.classList.contains('open');
-        countiesDiv.style.maxHeight = isOpen ? '4000px' : '0';
-        countiesDiv.classList.toggle('sc-open', isOpen);
+        if (isOpen) {
+          // Measure true height: briefly lift constraints, read, restore, then animate
+          countiesDiv.style.transition = 'none';
+          countiesDiv.style.maxHeight = 'none';
+          countiesDiv.classList.add('sc-open');
+          const h = countiesDiv.scrollHeight;
+          countiesDiv.style.maxHeight = '0';
+          countiesDiv.classList.remove('sc-open');
+          // Force reflow then animate to real height
+          countiesDiv.offsetHeight;
+          countiesDiv.style.transition = '';
+          countiesDiv.style.maxHeight = h + 'px';
+          countiesDiv.classList.add('sc-open');
+        } else {
+          countiesDiv.style.maxHeight = countiesDiv.scrollHeight + 'px';
+          countiesDiv.offsetHeight;
+          countiesDiv.style.maxHeight = '0';
+          countiesDiv.classList.remove('sc-open');
+        }
         DB.saveUIState(stateOpenKey, isOpen);
       } else {
         // Name zone: zoom to state + update location bar
@@ -1176,8 +1193,11 @@ function renderPolygonList() {
     // State groups
     list.querySelectorAll('.state-counties').forEach(sc => {
       if (sc.dataset.initOpen === '1') {
-        sc.style.maxHeight = '4000px';
+        sc.style.transition = 'none';
+        sc.style.maxHeight = 'none';
         sc.classList.add('sc-open');
+        const h = sc.scrollHeight;
+        sc.style.maxHeight = h + 'px';
       } else {
         sc.style.maxHeight = '0';
       }
