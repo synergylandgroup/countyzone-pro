@@ -221,6 +221,12 @@ const map = new mapboxgl.Map({
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'imperial' }), 'bottom-left');
 
+// #10 — remove native browser tooltips from all map control buttons
+map.once('load', () => {
+  document.querySelectorAll('.mapboxgl-ctrl button[title]').forEach(btn => btn.removeAttribute('title'));
+  document.querySelectorAll('.mapboxgl-ctrl button[aria-label]').forEach(btn => btn.removeAttribute('aria-label'));
+});
+
 // Custom North button control — sits above NavigationControl in bottom-right
 class NorthControl {
   onAdd(map) {
@@ -229,8 +235,8 @@ class NorthControl {
     this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
     this._btn = document.createElement('button');
     this._btn.className = 'north-ctrl-btn';
-    this._btn.title = 'Reset to North';
-    this._btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M47.655 1.634L50 16V73.5L19.89 91.461L12.655 98.614c-.828 2.24 1.659 4.255 3.68 2.98L50 80.386z" fill="#5b7fa6"/><path d="M52.345 1.634L50 16V73.5L80.11 91.461l7.235 7.153c2.02 1.271 4.503-.74 3.678-2.98l-35-95C55.907.514 55.163.006 54 .008z" fill="#b8cfe0"/><circle cx="50" cy="73" r="5" fill="#6b7d95"/></svg>`;
+    this._btn.title = '';
+    this._btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="M47.655 1.634l-35 95c-.828 2.24 1.659 4.255 3.68 2.98l33.667-21.228l33.666 21.228c2.02 1.271 4.503-.74 3.678-2.98l-35-95C51.907.514 51.163.006 50 .008c-1.163.001-1.99.65-2.345 1.626zm-.155 14.88v57.54L19.89 91.461z" fill="#b94040" fill-rule="evenodd"/></svg>`;
     this._btn.onclick = () => map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
     this._container.appendChild(this._btn);
     return this._container;
@@ -242,9 +248,16 @@ map.addControl(new NorthControl(), 'bottom-right');
 function resetNorth() { map.easeTo({ bearing: 0, pitch: 0, duration: 500 }); }
 
 function changeMapStyle(idx) {
+  const center = map.getCenter();
+  const zoom   = map.getZoom();
+  const bearing = map.getBearing();
+  const pitch   = map.getPitch();
   polygons.forEach(p => _removeZoneLabel(p));
   map.setStyle(MAP_STYLES[parseInt(idx)].id);
   _activeStyleIdx = parseInt(idx);
+  map.once('style.load', () => {
+    map.jumpTo({ center, zoom, bearing, pitch });
+  });
 }
 
 map.on('style.load', () => {
@@ -520,7 +533,6 @@ function cancelDraw() {
   document.getElementById('btnPolygon').classList.remove('active');
   document.getElementById('btnCancel').style.display = 'none';
   document.getElementById('drawHint').style.display = 'none';
-  document.getElementById('drawHelp').textContent = 'Select a state & county above, then click Draw Polygon.';
 }
 
 function startDraw() {
@@ -532,7 +544,6 @@ function startDraw() {
   const hint = document.getElementById('drawHint');
   hint.style.display = 'block';
   hint.textContent = '📍 Click to add vertices — click first point to close';
-  document.getElementById('drawHelp').textContent = 'Click to place vertices. Click the first point to close.';
 }
 
 map.on('click', function(e) {
@@ -540,6 +551,18 @@ map.on('click', function(e) {
   if (drawMode !== 'polygon' || polyState !== 'drawing') return;
   const pt = [e.lngLat.lng, e.lngLat.lat];
   if (drawPoints.length >= 3 && pixelDist(pt, drawPoints[0]) <= 10) { _finishPolygon(); return; }
+  // #1 — enforce county boundary on every vertex placement
+  if (_pendingCountyGeoJSON) {
+    const inCounty = _pendingCountyGeoJSON.features.some(f => {
+      const coords = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
+                   : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+      return coords.some(poly => pointInPolygon(pt[1], pt[0], poly[0].map(c => [c[0], c[1]])));
+    });
+    if (!inCounty) {
+      showToast('Zone must be drawn within the selected county boundary.', 'error');
+      return;
+    }
+  }
   drawPoints.push(pt);
   _refreshPolyPreviews(null);
 });
@@ -1170,7 +1193,7 @@ async function navigateToState(stateAbbr) {
     // Add state boundary line — solid 2px, renders on top of county
     map.addSource('state-boundary', { type: 'geojson', data: geojson });
     map.addLayer({ id: 'state-boundary-line', type: 'line', source: 'state-boundary',
-      paint: { 'line-color': '#00d4ff', 'line-width': 3 }
+      paint: { 'line-color': '#ffffff', 'line-width': 3 }
     });
 
     // Fit map to state bounds
@@ -1568,20 +1591,24 @@ function openSheetsModal() {
   const dot = document.getElementById('smDot');
   const statusText = document.getElementById('smStatusText');
   const disconnectBtn = document.getElementById('smDisconnectBtn');
+  const openSheetBtn = document.getElementById('smOpenSheetBtn');
   if (existing && existing.sheetId) {
-    dot.className = 'spill-dot';
-    dot.style.background = 'var(--green)';
-    dot.style.boxShadow = '0 0 4px rgba(46,138,90,0.4)';
-    statusText.textContent = 'Sheet Connected';
-    statusText.style.color = 'var(--green)';
+    dot.style.display = 'none';
+    statusText.style.display = 'none';
+    if (openSheetBtn) {
+      openSheetBtn.style.display = '';
+      openSheetBtn.onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${existing.sheetId}/edit`, '_blank');
+    }
     disconnectBtn.style.display = '';
   } else {
     dot.className = 'spill-dot';
+    dot.style.display = '';
     dot.style.background = 'var(--red)';
     dot.style.boxShadow = '';
+    statusText.style.display = '';
     statusText.textContent = 'No Sheet Connected';
     statusText.style.color = '#b94040';
-    statusText.style.color = 'var(--muted)';
+    if (openSheetBtn) openSheetBtn.style.display = 'none';
     disconnectBtn.style.display = 'none';
   }
 
@@ -1619,9 +1646,11 @@ function disconnectSheet() {
   }
   // Reset modal status
   const _d = document.getElementById('smDot');
-  _d.style.background = '#b94040'; _d.style.boxShadow = '';
+  _d.style.display = ''; _d.style.background = '#b94040'; _d.style.boxShadow = '';
   const _st = document.getElementById('smStatusText');
-  _st.textContent = 'No Sheet Connected'; _st.style.color = '#b94040';
+  _st.style.display = ''; _st.textContent = 'No Sheet Connected'; _st.style.color = '#b94040';
+  const _ob = document.getElementById('smOpenSheetBtn');
+  if (_ob) _ob.style.display = 'none';
   document.getElementById('smDisconnectBtn').style.display = 'none';
   document.getElementById('sheetId').value = '';
   renderPolygonList();
