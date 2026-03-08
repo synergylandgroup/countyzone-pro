@@ -262,6 +262,8 @@
   /* Opens leftward from icon right edge, arrow centered over 24px county icon */
   .tip-open-left{right:0!important;left:auto!important;transform:none!important;}
   .tip-open-left::after{right:12px!important;left:auto!important;transform:none!important;}
+  /* Fixed-position tooltip: JS positions these to escape overflow:clip containers */
+  .tip-box-fixed{position:fixed!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;transform:none!important;}
 
   /* HEADER REDESIGN */
   header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);display:grid;grid-template-columns:420px 1fr;align-items:center;height:64px;}

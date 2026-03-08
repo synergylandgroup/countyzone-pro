@@ -94,6 +94,69 @@ function abbrToFullName(abbr) {
 const SERVICE_ACCOUNT_EMAIL = [108,97,110,100,118,97,108,117,97,116,111,114,45,115,104,101,101,116,115,64,108,97,110,100,118,97,108,117,97,116,111,114,46,105,97,109,46,103,115,101,114,118,105,99,101,97,99,99,111,117,110,116,46,99,111,109].map(c=>String.fromCharCode(c)).join('');
 // Fill email display via JS to prevent Cloudflare obfuscation
 document.addEventListener('DOMContentLoaded', () => { const el = document.getElementById('serviceEmailEl'); if(el) el.textContent = SERVICE_ACCOUNT_EMAIL; });
+
+// =========================================================
+// FIXED-POSITION TOOLTIP MANAGER
+// Tooltips inside overflow:clip containers (county/zone lists)
+// must use position:fixed to escape clipping.
+// =========================================================
+(function() {
+  const LIST_SELECTOR = '#polygonsList';
+
+  document.addEventListener('mouseenter', e => {
+    const wrap = e.target.closest && e.target.closest('.tip-wrap');
+    if (!wrap) return;
+    if (!wrap.closest(LIST_SELECTOR)) return;
+    const box = wrap.querySelector('.tip-box');
+    if (!box) return;
+
+    const anchor = wrap.getBoundingClientRect();
+    const isUp = box.classList.contains('tip-box-up');
+    const isOpenLeft = box.classList.contains('tip-open-left');
+
+    box.classList.add('tip-box-fixed');
+
+    // Force a paint so we can measure box dimensions
+    box.style.opacity = '0';
+    box.style.display = 'block';
+    const bw = box.offsetWidth;
+    const bh = box.offsetHeight;
+
+    let top, left;
+    if (isUp) {
+      top = anchor.top - bh - 6;
+    } else {
+      top = anchor.bottom + 6;
+    }
+
+    if (isOpenLeft) {
+      // Right edge of box aligns to right edge of anchor
+      left = anchor.right - bw;
+    } else {
+      // Centered on anchor
+      left = anchor.left + anchor.width / 2 - bw / 2;
+    }
+
+    // Keep on screen
+    left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
+
+    box.style.top = top + 'px';
+    box.style.left = left + 'px';
+    box.style.display = '';
+
+  }, true);
+
+  document.addEventListener('mouseleave', e => {
+    const wrap = e.target.closest && e.target.closest('.tip-wrap');
+    if (!wrap) return;
+    if (!wrap.closest(LIST_SELECTOR)) return;
+    const box = wrap.querySelector('.tip-box');
+    if (!box) return;
+    box.classList.remove('tip-box-fixed');
+    box.style.top = '';
+    box.style.left = '';
+  }, true);
+})();
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3luZXJneWxhbmRncm91cCIsImEiOiJjbW02MjI5dTEwY2xtMnFuMGs2Y3Y2OWlwIn0.O7gX97oTNFUw9HooOheq6w';
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -1188,21 +1251,9 @@ function renderPolygonList() {
     list.appendChild(stateDiv);
   });
 
-  // Init county content max-heights after DOM is built
+  // Init heights: county content first, then state (so state scrollHeight is accurate)
   requestAnimationFrame(() => {
-    // State groups
-    list.querySelectorAll('.state-counties').forEach(sc => {
-      if (sc.dataset.initOpen === '1') {
-        sc.style.transition = 'none';
-        sc.style.maxHeight = 'none';
-        sc.classList.add('sc-open');
-        const h = sc.scrollHeight;
-        sc.style.maxHeight = h + 'px';
-      } else {
-        sc.style.maxHeight = '0';
-      }
-    });
-    // County content
+    // Pass 1: set county content heights
     list.querySelectorAll('.county-content').forEach(cc => {
       const pill = cc.previousElementSibling?.querySelector('.county-header-pill');
       if (pill && pill.classList.contains('open')) {
@@ -1212,6 +1263,22 @@ function renderPolygonList() {
         cc.style.maxHeight = '0';
         cc.classList.remove('cc-open');
       }
+    });
+    // Pass 2: now measure state heights (county content heights are settled)
+    requestAnimationFrame(() => {
+      list.querySelectorAll('.state-counties').forEach(sc => {
+        if (sc.dataset.initOpen === '1') {
+          sc.style.transition = 'none';
+          sc.style.maxHeight = 'none';
+          sc.classList.add('sc-open');
+          const h = sc.scrollHeight;
+          sc.style.maxHeight = h + 'px';
+          sc.offsetHeight; // flush
+          sc.style.transition = '';
+        } else {
+          sc.style.maxHeight = '0';
+        }
+      });
     });
   });
 }
