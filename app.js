@@ -457,6 +457,7 @@ function _buildCountyPills() {
 
       // Update dropdowns immediately
       stateSelect.value = sa;
+      _syncStateTrigger(sa);
       const cs = document.getElementById('countySelect');
       await loadCounties(true);
       cs.value = cn;
@@ -466,6 +467,7 @@ function _buildCountyPills() {
         cs.appendChild(o);
         cs.value = cn;
       }
+      _syncCountyTrigger(cn);
       saveAppState();
       const saved = _getSheetConfig(sa, cn);
       if (saved) { sheetConfig = saved; setConnected(true); }
@@ -724,12 +726,15 @@ function openSheetsModalForCounty(stateAbbr, countyName, e) {
   const cs = document.getElementById('countySelect');
   if (ss.value !== stateAbbr) {
     ss.value = stateAbbr;
+    _syncStateTrigger(stateAbbr);
     loadCounties(true).then(() => {
       cs.value = countyName;
+      _syncCountyTrigger(countyName);
       openSheetsModal();
     });
   } else {
     cs.value = countyName;
+    _syncCountyTrigger(countyName);
     openSheetsModal();
   }
 }
@@ -1096,9 +1101,9 @@ function renderPolygonList() {
           <span class="county-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
           <span class="county-zone-pill">${cPolys.length}</span>
-          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up" style="white-space:nowrap;">${sheetIconTooltip}</span></span>
-          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-box-up" style="white-space:nowrap;">Copy URL to ${countyName} County's zones page.</span></span>
-          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-box-up" style="white-space:nowrap;">Delete saved zones in ${countyName} County</span></span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-box-up tip-open-left" style="white-space:nowrap;">${sheetIconTooltip}</span></span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-box-up tip-open-left" style="white-space:nowrap;">Copy URL to ${countyName} County's zones page.</span></span>
+          <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-box-up tip-open-left" style="white-space:nowrap;">Delete saved zones in ${countyName} County</span></span>
         </div>
       `;
 
@@ -1905,14 +1910,107 @@ STATES.forEach(([name, abbr]) => {
   stateSelect.appendChild(o);
 });
 
+// =========================================================
+// CUSTOM DROPDOWNS
+// =========================================================
+function _buildCustomList(listEl, options, currentValue, onSelect) {
+  listEl.innerHTML = '';
+  options.forEach(({ value, label }) => {
+    const div = document.createElement('div');
+    div.className = 'custom-select-option' + (value === '' ? ' placeholder-opt' : '') + (value === currentValue ? ' selected' : '');
+    div.textContent = label;
+    div.addEventListener('click', (e) => { e.stopPropagation(); onSelect(value, label); });
+    listEl.appendChild(div);
+  });
+}
+
+function _syncStateTrigger(value) {
+  const trigger = document.getElementById('stateTrigger');
+  const label = document.getElementById('stateLabel');
+  if (!trigger || !label) return;
+  const found = STATES.find(([, abbr]) => abbr === value);
+  label.textContent = found ? found[0] : '— Select State —';
+  trigger.classList.toggle('placeholder', !found);
+}
+
+function _syncCountyTrigger(value) {
+  const trigger = document.getElementById('countyTrigger');
+  const label = document.getElementById('countyLabel');
+  if (!trigger || !label) return;
+  const cs = document.getElementById('countySelect');
+  const opt = cs ? Array.from(cs.options).find(o => o.value === value) : null;
+  label.textContent = opt && value ? opt.textContent : '— Select County —';
+  trigger.classList.toggle('placeholder', !value);
+}
+
+function _toggleDropdown(which) {
+  const isState = which === 'state';
+  const triggerId = isState ? 'stateTrigger' : 'countyTrigger';
+  const listId = isState ? 'stateList' : 'countyList';
+  const trigger = document.getElementById(triggerId);
+  const list = document.getElementById(listId);
+  if (!trigger || !list) return;
+
+  const isOpen = list.classList.contains('open');
+
+  // Close both first
+  ['stateTrigger','countyTrigger'].forEach(id => document.getElementById(id)?.classList.remove('open'));
+  ['stateList','countyList'].forEach(id => document.getElementById(id)?.classList.remove('open'));
+
+  if (!isOpen) {
+    if (isState) {
+      const opts = [{ value: '', label: '— Select State —' }, ...STATES.map(([name, abbr]) => ({ value: abbr, label: name }))];
+      _buildCustomList(list, opts, stateSelect.value, (val, lbl) => {
+        stateSelect.value = val;
+        _syncStateTrigger(val);
+        trigger.classList.remove('open');
+        list.classList.remove('open');
+        // Reset county
+        const cs = document.getElementById('countySelect');
+        cs.innerHTML = '<option value="">— Select County —</option>';
+        _syncCountyTrigger('');
+        stateSelect.dispatchEvent(new Event('change'));
+      });
+    } else {
+      const cs = document.getElementById('countySelect');
+      const opts = Array.from(cs.options).map(o => ({ value: o.value, label: o.textContent }));
+      _buildCustomList(list, opts, cs.value, (val) => {
+        cs.value = val;
+        _syncCountyTrigger(val);
+        trigger.classList.remove('open');
+        list.classList.remove('open');
+        cs.dispatchEvent(new Event('change'));
+      });
+    }
+    trigger.classList.add('open');
+    list.classList.add('open');
+  }
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#stateDropdown') && !e.target.closest('#countyDropdown')) {
+    ['stateTrigger','countyTrigger'].forEach(id => document.getElementById(id)?.classList.remove('open'));
+    ['stateList','countyList'].forEach(id => document.getElementById(id)?.classList.remove('open'));
+  }
+});
+
+// Sync custom triggers whenever native select values change externally
+const _origLoadCounties = window.loadCounties;
+function _refreshCustomSelects() {
+  _syncStateTrigger(stateSelect.value);
+  _syncCountyTrigger(document.getElementById('countySelect').value);
+}
+
 async function loadCounties(silent) {
   const abbr = stateSelect.value; if (!abbr) return;
   const cs = document.getElementById('countySelect');
-  if (!silent) cs.innerHTML = '<option value="">Loading counties...</option>';
+  if (!silent) { cs.innerHTML = '<option value="">Loading counties...</option>'; _syncCountyTrigger(''); }
   function fill(counties) {
     cs.innerHTML = '<option value="">— Select County —</option>';
     counties.forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n+' County'; cs.appendChild(o); });
-    if (!silent) { const s=loadAppState(); if(s&&s.state===abbr&&s.county) cs.value=s.county; }
+    if (!silent) { const s=loadAppState(); if(s&&s.state===abbr&&s.county) { cs.value=s.county; } }
+    _syncCountyTrigger(cs.value);
   }
   try {
     const cached = DB.loadCountyCache(abbr);
@@ -1931,7 +2029,7 @@ async function loadCounties(silent) {
     fill(counties);
   } catch(e) {
     try { const _cc=DB.loadCountyCache(abbr); if(_cc){const _ccp=typeof _cc==='string'?JSON.parse(_cc):_cc; fill(_ccp.counties||_ccp);return;} } catch(e2){}
-    if (!silent) cs.innerHTML='<option value="">Failed to load</option>';
+    if (!silent) { cs.innerHTML='<option value="">Failed to load</option>'; _syncCountyTrigger(''); }
   }
 }
 
@@ -2154,10 +2252,12 @@ map.on('load', () => {
   const appState = loadAppState();
   if (appState && appState.state) {
     stateSelect.value = appState.state;
+    _syncStateTrigger(appState.state);
     loadCounties().then(() => {
       const countySelect = document.getElementById('countySelect');
       if (appState.county) {
         countySelect.value = appState.county;
+        _syncCountyTrigger(appState.county);
 
         // Restore active sheet config for currently selected county
         const saved = _getSheetConfig(appState.state, appState.county);
