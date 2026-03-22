@@ -805,6 +805,52 @@ async function loadZonesFromShareId(shareId) {
 }
 
 // -- Save & Sync: save pricing + assign + write zones + sync pricing --
+// ── Acreage overlap validation (item 4) ─────────────────────────────────────
+// Returns array of { rowA, rowB, overlapMin, overlapMax } for any conflicting pairs.
+// Rows with blank min/max are skipped — incomplete rows don't block save.
+function _checkAcreageOverlaps(rows) {
+  const conflicts = [];
+  const valid = rows.map((r, i) => ({
+    idx: i,
+    min: r.minAcres !== '' ? parseFloat(r.minAcres) : null,
+    max: r.maxAcres !== '' ? parseFloat(r.maxAcres) : null,
+  })).filter(r => r.min !== null && r.max !== null && !isNaN(r.min) && !isNaN(r.max));
+
+  for (let i = 0; i < valid.length; i++) {
+    for (let j = i + 1; j < valid.length; j++) {
+      const a = valid[i], b = valid[j];
+      const overlapMin = Math.max(a.min, b.min);
+      const overlapMax = Math.min(a.max, b.max);
+      if (overlapMin < overlapMax) {
+        conflicts.push({ rowA: a.idx, rowB: b.idx, overlapMin, overlapMax });
+      }
+    }
+  }
+  return conflicts;
+}
+
+function _showOverlapError(conflicts) {
+  // Highlight conflicting rows in red
+  const rows = document.querySelectorAll('#zeTbody tr');
+  rows.forEach(tr => tr.style.background = '');
+  const conflictIdxs = new Set();
+  conflicts.forEach(c => { conflictIdxs.add(c.rowA); conflictIdxs.add(c.rowB); });
+  conflictIdxs.forEach(i => { if (rows[i]) rows[i].style.background = '#fff5f5'; });
+
+  // Build detail lines for the modal
+  const details = conflicts.map(c => {
+    const a = c.rowA + 1, b = c.rowB + 1;
+    return `Row ${a} and Row ${b} overlap between ${c.overlapMin}–${c.overlapMax} acres`;
+  }).join('\n');
+
+  _showConfirm({
+    title: 'Acreage Range Overlap Detected',
+    sub: 'Please adjust the ranges so they don\'t overlap before saving.\n\n' + details,
+    okLabel: 'Go Back & Fix',
+    _overlapOnly: true,
+  });
+}
+
 async function saveAndSyncZone() {
   if (!_editingDescId) return;
   const p = polygons.find(p => p.id === _editingDescId);
@@ -816,6 +862,14 @@ async function saveAndSyncZone() {
   // 1. Save locally — capture state BEFORE closing modal
   p.description = document.getElementById('zeNotes').value.trim();
   p.pricingTiers = zeCollectRows();
+
+  // 4 — Acreage overlap validation: block save if any ranges conflict
+  const _overlapConflicts = _checkAcreageOverlaps(p.pricingTiers);
+  if (_overlapConflicts.length) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '💾 Save &amp; Sync'; }
+    _showOverlapError(_overlapConflicts);
+    return;
+  }
   p.allZones = false;
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
@@ -1071,7 +1125,8 @@ function renderPolygonList() {
 
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
-    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count" style="pointer-events:none">${totalZones}</span>`;
+    const _stateZoneTip = totalZones === 1 ? `1 zone in \${fullName}` : `\${totalZones} zones in \${fullName}`;
+    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tip-wrap" style="flex:1;min-width:0;"><span class="sg-name">\${fullName}</span><span class="tip-box tip-sidebar" style="right:auto;left:8px;">Zoom map into \${fullName}</span></span><span class="tip-wrap"><span class="sg-count" style="pointer-events:none;">\${totalZones}</span><span class="tip-box tip-sidebar">\${_stateZoneTip}</span></span>`;
     hdr.onclick = e => {
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
@@ -1116,8 +1171,8 @@ function renderPolygonList() {
       cHdr.innerHTML = `
         <div class="county-header-pill${isCountyOpen ? ' open' : ''}">
           <span class="county-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <span class="county-name-text" title="${countyName} County">${countyName} County</span>
-          <span class="county-zone-pill" style="pointer-events:none">${cPolys.length}</span>
+          <span class="tip-wrap" style="flex:1;min-width:0;"><span class="county-name-text">${countyName} County</span><span class="tip-box tip-sidebar" style="right:auto;left:8px;">Zoom map into ${countyName} County</span></span>
+          <span class="tip-wrap"><span class="county-zone-pill" style="pointer-events:none">${cPolys.length}</span><span class="tip-box tip-sidebar">${cPolys.length === 1 ? `1 zone in ${countyName} County` : `${cPolys.length} zones in ${countyName} County`}</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-sidebar">${sheetIconTooltip}</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-sidebar">Copy URL to ${countyName} County's zones page.</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-sidebar">Delete saved zones in ${countyName} County</span></span>
@@ -1298,35 +1353,54 @@ async function loadCountyBoundaryOnly(stateAbbr, countyName, cacheOnly) {
 // =========================================================
 let _confirmResolve = null;
 
-function _showConfirm({ title, sub, okLabel = 'Delete', typePhrase = null }) {
+function _showConfirm({ title, sub, okLabel = 'Delete', typePhrase = null, _overlapOnly = false }) {
   return new Promise(resolve => {
     _confirmResolve = resolve;
     document.getElementById('confirmTitle').textContent = title;
     document.getElementById('confirmSub').textContent = sub;
-    document.getElementById('confirmOkBtn').textContent = okLabel;
 
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const okBtn = document.getElementById('confirmOkBtn');
     const typeWrap = document.getElementById('confirmTypeWrap');
     const typeInput = document.getElementById('confirmTypeInput');
 
-    if (typePhrase) {
-      typeWrap.style.display = '';
-      document.getElementById('confirmTypePhrase').textContent = '"' + typePhrase + '"';
-      typeInput.value = '';
-      typeInput.classList.remove('valid');
-      // Enable/disable OK based on match
-      _updateConfirmOk(typePhrase);
-      typeInput.oninput = () => _updateConfirmOk(typePhrase);
-      document.getElementById('confirmOkBtn').disabled = true;
-      document.getElementById('confirmOkBtn').style.opacity = '0.4';
-    } else {
+    if (_overlapOnly) {
+      // 4 — Overlap error: single dismiss button only, no cancel
+      cancelBtn.style.display = 'none';
+      okBtn.textContent = okLabel;
+      okBtn.disabled = false;
+      okBtn.style.opacity = '1';
+      // Style as ghost (not destructive red) since this is informational
+      okBtn.style.background = '#fff';
+      okBtn.style.color = 'var(--muted)';
+      okBtn.style.border = '1px solid var(--border)';
       typeWrap.style.display = 'none';
       typeInput.oninput = null;
-      document.getElementById('confirmOkBtn').disabled = false;
-      document.getElementById('confirmOkBtn').style.opacity = '1';
+    } else {
+      cancelBtn.style.display = '';
+      okBtn.style.background = '';
+      okBtn.style.color = '';
+      okBtn.style.border = '';
+      okBtn.textContent = okLabel;
+      if (typePhrase) {
+        typeWrap.style.display = '';
+        document.getElementById('confirmTypePhrase').textContent = '"' + typePhrase + '"';
+        typeInput.value = '';
+        typeInput.classList.remove('valid');
+        _updateConfirmOk(typePhrase);
+        typeInput.oninput = () => _updateConfirmOk(typePhrase);
+        okBtn.disabled = true;
+        okBtn.style.opacity = '0.4';
+      } else {
+        typeWrap.style.display = 'none';
+        typeInput.oninput = null;
+        okBtn.disabled = false;
+        okBtn.style.opacity = '1';
+      }
     }
 
     document.getElementById('confirmModal').classList.add('open');
-    if (typePhrase) setTimeout(() => typeInput.focus(), 120);
+    if (typePhrase && !_overlapOnly) setTimeout(() => typeInput.focus(), 120);
   });
 }
 
@@ -1614,6 +1688,47 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 // =========================================================
 // GOOGLE SHEETS
 // =========================================================
+// 5.2 — extract spreadsheet ID from a full URL or raw ID string
+function _parseSheetId(input) {
+  const s = (input || '').trim();
+  const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : s;
+}
+
+// 5.2 — update sheets modal status box between connected / not-connected
+function _smSetConnected(isConnected, sheetName, sheetId, lastUrl) {
+  const box   = document.getElementById('smStatusBox');
+  const title = document.getElementById('smStatusTitle');
+  const sub   = document.getElementById('smStatusSub');
+  const openBtn = document.getElementById('smOpenSheetBtn');
+  const discRow = document.getElementById('smDisconnectRow');
+  const urlField = document.getElementById('smUrlField');
+  const connectBtn = document.getElementById('smConnectBtn');
+
+  if (isConnected) {
+    box.className = 'sm-status-box connected';
+    title.textContent = sheetName || 'Connected';
+    sub.textContent = 'Connected';
+    openBtn.style.display = '';
+    openBtn.onclick = () => window.open('https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', '_blank');
+    discRow.style.display = '';
+    urlField.style.display = 'none';
+    connectBtn.textContent = 'Refresh & Sync';
+  } else {
+    box.className = 'sm-status-box not-connected';
+    title.textContent = 'Sheet Not Connected';
+    sub.textContent = lastUrl
+      ? 'Previously connected URL restored below'
+      : 'Enter your Google Sheets URL below to connect';
+    openBtn.style.display = 'none';
+    discRow.style.display = 'none';
+    urlField.style.display = '';
+    // Pre-fill with last used URL if available
+    if (lastUrl) document.getElementById('sheetId').value = lastUrl;
+    connectBtn.textContent = 'Connect & Load';
+  }
+}
+
 function openSheetsModal() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
@@ -1621,54 +1736,30 @@ function openSheetsModal() {
   const existing = (sa && cn) ? _getSheetConfig(sa, cn) : null;
 
   // County badge
-  if (sa && cn) {
-    badge.textContent = `${cn} County, ${sa}`;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
+  if (sa && cn) { badge.textContent = cn + ' County, ' + sa; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
 
-  // Connection status row
-  const dot = document.getElementById('smDot');
-  const statusText = document.getElementById('smStatusText');
-  const disconnectBtn = document.getElementById('smDisconnectBtn');
-  const openSheetBtn = document.getElementById('smOpenSheetBtn');
+  // 5.2 — status box + URL field visibility
+  const lastUrl = existing && existing.sheetUrl ? existing.sheetUrl : '';
   if (existing && existing.sheetId) {
-    dot.style.display = 'none';
-    statusText.style.display = 'none';
-    if (openSheetBtn) {
-      openSheetBtn.style.display = '';
-      openSheetBtn.onclick = () => window.open(`https://docs.google.com/spreadsheets/d/${existing.sheetId}/edit`, '_blank');
-    }
-    disconnectBtn.style.display = '';
+    _smSetConnected(true, existing.sheetTitle || '', existing.sheetId, lastUrl);
   } else {
-    dot.className = 'spill-dot';
-    dot.style.display = '';
-    dot.style.background = 'var(--red)';
-    dot.style.boxShadow = '';
-    statusText.style.display = '';
-    statusText.textContent = 'No Sheet Connected';
-    statusText.style.color = '#b94040';
-    if (openSheetBtn) openSheetBtn.style.display = 'none';
-    disconnectBtn.style.display = 'none';
+    _smSetConnected(false, '', '', lastUrl);
   }
 
-  // Populate fields
-  document.getElementById('smSheetNameField').value = '';
+  // Populate editable fields
   if (existing) {
-    document.getElementById('sheetId').value    = existing.sheetId    || '';
     document.getElementById('sheetName').value  = existing.sheetName  || 'LI Raw Dataset';
-    // Fetch live sheet name for read-only field
-    if (existing.sheetId) setTimeout(() => _fetchSheetName(existing.sheetId), 100);
     document.getElementById('colLat').value     = existing.colLat     || 'Latitude';
     document.getElementById('colLng').value     = existing.colLng     || 'Longitude';
     document.getElementById('colAPN').value     = existing.colAPN     || 'APN';
     document.getElementById('colCity').value    = existing.colCity    || 'City';
+    document.getElementById('colCounty').value  = existing.colCounty  || 'County';
     document.getElementById('colState').value   = existing.colState   || 'State';
     document.getElementById('colZip').value     = existing.colZip     || 'ZIP';
     document.getElementById('colZone').value    = existing.colZone    || 'County Zone';
-  } else {
-    document.getElementById('sheetId').value = '';
+    // Show raw ID in URL field when not connected (pre-fill)
+    if (!existing.sheetId) document.getElementById('sheetId').value = existing.sheetUrl || '';
   }
 
   document.getElementById('sheetsModal').classList.add('open');
@@ -1679,21 +1770,16 @@ function disconnectSheet() {
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
   if (!sa || !cn) return;
-  delete sheetConfigs[_countyKey(sa, cn)];
+  const key = _countyKey(sa, cn);
+  const lastUrl = (sheetConfigs[key] && sheetConfigs[key].sheetUrl) ? sheetConfigs[key].sheetUrl : '';
+  delete sheetConfigs[key];
   DB.saveSheetConfigs(sheetConfigs);
   if (sheetConfig && sheetConfig.stateAbbr === sa && sheetConfig.countyName === cn) {
     sheetConfig = null;
     setConnected(false);
   }
-  // Reset modal status
-  const _d = document.getElementById('smDot');
-  _d.style.display = ''; _d.style.background = '#b94040'; _d.style.boxShadow = '';
-  const _st = document.getElementById('smStatusText');
-  _st.style.display = ''; _st.textContent = 'No Sheet Connected'; _st.style.color = '#b94040';
-  const _ob = document.getElementById('smOpenSheetBtn');
-  if (_ob) _ob.style.display = 'none';
-  document.getElementById('smDisconnectBtn').style.display = 'none';
-  document.getElementById('sheetId').value = '';
+  // 5.2 — restore not-connected state, pre-fill last URL
+  _smSetConnected(false, '', '', lastUrl);
   renderPolygonList();
   showToast('Sheet disconnected', 'info');
 }
@@ -1714,8 +1800,11 @@ function disconnectSheetForCounty(stateAbbr, countyName, evt) {
 }
 
 async function connectSheets() {
-  const sheetId = document.getElementById('sheetId').value.trim();
-  if (!sheetId) { showToast('Please enter a Spreadsheet ID', 'error'); return; }
+  const rawInput = document.getElementById('sheetId').value.trim();
+  if (!rawInput) { showToast('Please enter a Google Sheets URL or ID', 'error'); return; }
+  // 5.2 — accept full URL or raw ID
+  const sheetId = _parseSheetId(rawInput);
+  if (!sheetId) { showToast('Could not parse a Sheet ID from that URL', 'error'); return; }
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
   if (!sa || !cn) { showToast('Please select a State and County first', 'error'); return; }
@@ -1726,22 +1815,25 @@ async function connectSheets() {
   if (existingKey) {
     const [existKey] = existingKey;
     const [existState, existCounty] = existKey.split('|');
-    showToast(`This sheet is already connected to ${existCounty} County, ${existState}`, 'error');
+    showToast('This sheet is already connected to ' + existCounty + ' County, ' + existState, 'error');
     return;
   }
 
   sheetConfig = {
     sheetId,
+    sheetUrl:   rawInput,   // 5.2 — store original input for pre-fill on disconnect
+    sheetTitle: '',         // 5.2 — populated after API call
     stateAbbr:  sa,
     countyName: cn,
-    sheetName:  document.getElementById('sheetName').value.trim()  || 'LI Raw Dataset',
-    colLat:     document.getElementById('colLat').value.trim()     || 'Latitude',
-    colLng:     document.getElementById('colLng').value.trim()     || 'Longitude',
-    colAPN:     document.getElementById('colAPN').value.trim()     || 'APN',
-    colCity:    document.getElementById('colCity').value.trim()    || 'City',
-    colState:   document.getElementById('colState').value.trim()   || 'State',
-    colZip:     document.getElementById('colZip').value.trim()     || 'ZIP',
-    colZone:    document.getElementById('colZone').value.trim()    || 'County Zone',
+    sheetName:  document.getElementById('sheetName').value.trim()   || 'LI Raw Dataset',
+    colLat:     document.getElementById('colLat').value.trim()      || 'Latitude',
+    colLng:     document.getElementById('colLng').value.trim()      || 'Longitude',
+    colAPN:     document.getElementById('colAPN').value.trim()      || 'APN',
+    colCity:    document.getElementById('colCity').value.trim()     || 'City',
+    colCounty:  document.getElementById('colCounty').value.trim()   || 'County',
+    colState:   document.getElementById('colState').value.trim()    || 'State',
+    colZip:     document.getElementById('colZip').value.trim()      || 'ZIP',
+    colZone:    document.getElementById('colZone').value.trim()     || 'County Zone',
   };
   // Save per-county
   _setSheetConfig(sa, cn, sheetConfig);
@@ -1756,6 +1848,12 @@ async function connectSheets() {
     if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
     loadPropertiesFromFunction(data.properties, cn);
     setConnected(true);
+
+    // 5.2 — store sheet title and update modal connected state
+    const sheetTitle = data.spreadsheetTitle || data.sheetTitle || sheetId;
+    sheetConfig.sheetTitle = sheetTitle;
+    _setSheetConfig(sa, cn, sheetConfig);
+    _smSetConnected(true, sheetTitle, sheetId, rawInput);
 
     // Auto-assign to existing zones immediately
     const _cnNorm = cn.toLowerCase().trim();
@@ -1777,10 +1875,8 @@ async function connectSheets() {
       persistZones();
     }
 
-    setTimeout(() => _fetchSheetName(sheetConfig.sheetId), 200);
-    closeSheetsModal();
     const _assigned = properties.filter(p => p.zone).length;
-    showToast(`Connected: ${cn} County — ${properties.length} properties, ${_assigned} assigned`, 'success');
+    showToast('Connected: ' + cn + ' County — ' + properties.length + ' properties, ' + _assigned + ' assigned', 'success');
   } catch(e) { showToast('Connection failed: ' + e.message, 'error'); }
 }
 function loadPropertiesFromFunction(props, countyOverride) {
