@@ -266,10 +266,14 @@ let _mapInitComplete = false;
 
 map.on('style.load', () => {
   _initDrawLayers();
-  _restoreAllZoneLayers();
+  // 1.2 — on initial page load, skip zone polygon fills/lines and county boundaries
+  // They only appear after the user actively selects a county.
+  // On style switch (_mapInitComplete=true), restore everything normally.
+  if (_mapInitComplete) {
+    _restoreAllZoneLayers();
+    if (_pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
+  }
   polygons.forEach(p => _addZoneLabel(p));
-  // 1.2 — only re-add county boundary on style change, not on initial page load
-  if (_mapInitComplete && _pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
   _rebuildAllLabels();
 });
 
@@ -1069,13 +1073,12 @@ function renderPolygonList() {
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
     hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count" style="pointer-events:none">${totalZones}</span>`;
     hdr.onclick = e => {
-      if (e.target.closest('.sg-count')) return; // 2.3 — badge is non-interactive
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
         countiesDiv.classList.toggle('ac-collapsed', !isOpen);
         DB.saveUIState(stateOpenKey, isOpen);
-      } else {
-        // Name zone: zoom to state + update location bar
+      } else if (e.target.closest('.sg-name')) {
+        // 2.3 — only zoom when clicking the name text, not the badge or header background
         stateSelect.value = stateAbbr;
         _syncStateTrigger(stateAbbr);
         const cs = document.getElementById('countySelect');
@@ -1083,6 +1086,7 @@ function renderPolygonList() {
         _syncCountyTrigger('');
         navigateToState(stateAbbr);
       }
+      // clicks on .sg-count or header background do nothing
     };
 
     const countiesDiv = document.createElement('div');
@@ -1126,15 +1130,16 @@ function renderPolygonList() {
       cHdr.onclick = e => {
         if (e.target.closest('.county-action-btn')) return;
         if (e.target.closest('.sheet-icon-btn')) return;
-        if (e.target.closest('.county-zone-pill')) return; // 2.3 — badge is non-interactive
         const pill = cHdr.querySelector('.county-header-pill');
         if (e.target.closest('.county-arrow-zone')) {
           const isOpen = pill.classList.toggle('open');
           cContent.classList.toggle('ac-collapsed', !isOpen);
           DB.saveUIState(countyOpenKey, isOpen);
-        } else {
+        } else if (e.target.closest('.county-name-text')) {
+          // 2.3 — only zoom when clicking the name text, not the badge or pill background
           navigateToCounty(stateAbbr, countyName);
         }
+        // clicks on .county-zone-pill or pill background do nothing
       };
 
       const polyDiv = document.createElement('div');
