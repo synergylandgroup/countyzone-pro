@@ -500,7 +500,7 @@ function _buildCountyPills() {
       if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
       if (map.getSource('state-boundary')) map.removeSource('state-boundary');
       map.fitBounds(b, { padding: 60 });
-      map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
+      map.once('moveend', () => { _restoreAllZoneLayers(); loadCountyBoundaryOnly(sa, cn); });
     });
 
     const marker = new mapboxgl.Marker({ element:el, anchor:'center' })
