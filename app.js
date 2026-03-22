@@ -444,7 +444,7 @@ function _buildCountyPills() {
 
     const el = document.createElement('div');
     el.className = 'zone-cluster';
-    el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count">${count}</span>`;
+    el.innerHTML = `${county} County, ${st}&nbsp;<span class="zc-count" style="pointer-events:none">${count}</span>`;
     el.title = `Click to zoom into ${county} County`;
 
     // Single click on county pill = zoom in AND update dropdowns
@@ -1059,7 +1059,7 @@ function renderPolygonList() {
 
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
-    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count">${totalZones}</span>`;
+    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count" style="pointer-events:none">${totalZones}</span>`;
     hdr.onclick = e => {
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
@@ -1104,7 +1104,7 @@ function renderPolygonList() {
         <div class="county-header-pill${isCountyOpen ? ' open' : ''}">
           <span class="county-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="county-name-text" title="${countyName} County">${countyName} County</span>
-          <span class="county-zone-pill">${cPolys.length}</span>
+          <span class="county-zone-pill" style="pointer-events:none">${cPolys.length}</span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-sidebar">${sheetIconTooltip}</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-sidebar">Copy URL to ${countyName} County's zones page.</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-sidebar">Delete saved zones in ${countyName} County</span></span>
@@ -1242,21 +1242,22 @@ async function zoomToZoneAndCounty(poly) {
   }
 }
 
-async function loadCountyBoundaryOnly(stateAbbr, countyName) {
+async function loadCountyBoundaryOnly(stateAbbr, countyName, cacheOnly) {
   try {
     const key = _countyKey(stateAbbr, countyName);
     // Always update _pendingCountyGeoJSON for draw validation
     if (_countyGeoJSONCache[key]) {
       _pendingCountyGeoJSON = _countyGeoJSONCache[key];
+      if (cacheOnly) return; // 1.2 — cache hit, no visual layer needed
     }
-    if (_countyLayers[key]) return; // layer already on map, no need to re-add
+    if (!cacheOnly && _countyLayers[key]) return; // layer already on map
     const fips = STATE_FIPS[stateAbbr];
     if (!fips) return;
     const geojson = await _fetchCountyGeoJSON(fips, countyName);
     if (!geojson) return;
     _countyGeoJSONCache[key] = geojson;
     _pendingCountyGeoJSON = geojson;
-    _addCountyBoundaryForKey(key, geojson);
+    if (!cacheOnly) _addCountyBoundaryForKey(key, geojson); // 1.2 — skip visual layer on init
   } catch(e) {}
 }
 
@@ -1441,18 +1442,19 @@ function _polyToJSON(p) {
 function persistZones() {
   DB.saveZones(polygons.map(_polyToJSON));
 }
-async function _loadAllCountyBoundaries() {
+async function _loadAllCountyBoundaries(cacheOnly) {
   // Find all unique state+county combos that have zones
   const combos = [...new Set(polygons.filter(p => p.stateAbbr && p.countyName).map(p => _countyKey(p.stateAbbr, p.countyName)))];
   for (const key of combos) {
-    if (_countyLayers[key]) continue; // already loaded
+    if (!cacheOnly && _countyLayers[key]) continue; // already loaded (visual layers)
     const [sa, cn] = key.split('|');
     const fips = STATE_FIPS[sa]; if (!fips) continue;
     try {
       const geojson = await _fetchCountyGeoJSON(fips, cn);
       if (geojson) {
         _countyGeoJSONCache[key] = geojson;
-        _addCountyBoundaryForKey(key, geojson);
+        // 1.2 — on page refresh, only cache GeoJSON for draw enforcement; don't draw boundary layers
+        if (!cacheOnly) _addCountyBoundaryForKey(key, geojson);
         // If this is the currently selected county, set as active boundary for draw enforcement
         const selState = document.getElementById('stateSelect').value;
         const selCounty = document.getElementById('countySelect').value;
@@ -1473,7 +1475,7 @@ function restoreZones() {
     data.forEach(d => _loadZone(d));
     _rebuildAllLabels();
     showToast(`Restored ${data.length} zone${data.length>1?'s':''}`, 'success');
-    setTimeout(() => _loadAllCountyBoundaries(), 500);
+    setTimeout(() => _loadAllCountyBoundaries(true), 500); // 1.2 — cache only on restore
   } catch(e) { console.error('restoreZones error:', e); }
 }
 function _loadZone(d) {
@@ -2227,6 +2229,9 @@ async function loadCounty() {
   const abbr = stateSelect.value, county = document.getElementById('countySelect').value;
   saveAppState(); if (!abbr||!county) return;
   _removeCountyLayer();
+  // 1.1 — Always clear state boundary when a county is selected
+  if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
+  if (map.getSource('state-boundary')) map.removeSource('state-boundary');
   showToast('Loading county boundary...', 'info');
   try {
     const fips = STATE_FIPS[abbr];
@@ -2323,7 +2328,7 @@ map.on('load', () => {
 
   // Safety net: rebuild labels/boundaries after map is fully ready
   setTimeout(() => {
-    if (polygons.length) { _rebuildAllLabels(); _loadAllCountyBoundaries(); }
+    if (polygons.length) { _rebuildAllLabels(); _loadAllCountyBoundaries(true); } // 1.2 — cache only on init
   }, 500);
 
   // Restore state/county dropdowns and reconnect sheet
@@ -2342,8 +2347,8 @@ map.on('load', () => {
         if (saved) { sheetConfig = saved; setConnected(true); }
         renderPolygonList();
 
-        // Ensure boundary enforcement is active for restored county
-        loadCountyBoundaryOnly(appState.state, appState.county);
+        // Ensure boundary enforcement is active for restored county (1.2 — cache only, no visual layer)
+        loadCountyBoundaryOnly(appState.state, appState.county, true);
 
         // Reconnect ALL counties that have saved sheet configs
         const _allConfigs = Object.entries(sheetConfigs || {});
