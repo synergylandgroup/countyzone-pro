@@ -260,11 +260,16 @@ function changeMapStyle(idx) {
   });
 }
 
+// 1.2 — track whether map has fully initialised (style.load fires on init AND style changes)
+// County boundary layers should only re-draw on style change, not on first page load
+let _mapInitComplete = false;
+
 map.on('style.load', () => {
   _initDrawLayers();
   _restoreAllZoneLayers();
   polygons.forEach(p => _addZoneLabel(p));
-  if (_pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
+  // 1.2 — only re-add county boundary on style change, not on initial page load
+  if (_mapInitComplete && _pendingCountyGeoJSON) _readdCountyLayer(_pendingCountyGeoJSON);
   _rebuildAllLabels();
 });
 
@@ -487,6 +492,9 @@ function _buildCountyPills() {
       } else {
         polys.forEach(p => p.points.forEach(pt => b.extend(pt)));
       }
+      // 1.1 — clear state boundary when county pill clicked on map
+      if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
+      if (map.getSource('state-boundary')) map.removeSource('state-boundary');
       map.fitBounds(b, { padding: 60 });
       map.once('moveend', () => loadCountyBoundaryOnly(sa, cn));
     });
@@ -1061,6 +1069,7 @@ function renderPolygonList() {
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
     hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sg-name">${fullName}</span><span class="sg-count" style="pointer-events:none">${totalZones}</span>`;
     hdr.onclick = e => {
+      if (e.target.closest('.sg-count')) return; // 2.3 — badge is non-interactive
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
         countiesDiv.classList.toggle('ac-collapsed', !isOpen);
@@ -1117,6 +1126,7 @@ function renderPolygonList() {
       cHdr.onclick = e => {
         if (e.target.closest('.county-action-btn')) return;
         if (e.target.closest('.sheet-icon-btn')) return;
+        if (e.target.closest('.county-zone-pill')) return; // 2.3 — badge is non-interactive
         const pill = cHdr.querySelector('.county-header-pill');
         if (e.target.closest('.county-arrow-zone')) {
           const isOpen = pill.classList.toggle('open');
@@ -1198,6 +1208,23 @@ async function navigateToState(stateAbbr) {
     };
     geojson.features.forEach(f => extendBounds(f.geometry.coordinates));
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60 });
+
+    // New requirement — show county boundary lines for counties that have zones in this state
+    const countiesWithZones = [...new Set(
+      polygons.filter(p => p.stateAbbr === stateAbbr && p.countyName).map(p => p.countyName)
+    )];
+    for (const cn of countiesWithZones) {
+      const key = _countyKey(stateAbbr, cn);
+      if (_countyLayers[key]) continue; // already drawn
+      if (_countyGeoJSONCache[key]) {
+        _addCountyBoundaryForKey(key, _countyGeoJSONCache[key]);
+      } else {
+        // fetch and draw in background
+        _fetchCountyGeoJSON(fips, cn).then(cGeo => {
+          if (cGeo) { _countyGeoJSONCache[key] = cGeo; _addCountyBoundaryForKey(key, cGeo); }
+        }).catch(() => {});
+      }
+    }
 
   } catch(e) {
     console.error('navigateToState error:', e);
@@ -2329,7 +2356,8 @@ map.on('load', () => {
   // Safety net: rebuild labels/boundaries after map is fully ready
   setTimeout(() => {
     if (polygons.length) { _rebuildAllLabels(); _loadAllCountyBoundaries(true); } // 1.2 — cache only on init
-  }, 500);
+    _mapInitComplete = true; // 1.2 — mark init done; style.load may now redraw county layers on style switch
+  }, 600);
 
   // Restore state/county dropdowns and reconnect sheet
   const appState = loadAppState();
