@@ -1081,9 +1081,9 @@ function renderPolygonList() {
         // 2.3 — only zoom when clicking the name text, not the badge or header background
         stateSelect.value = stateAbbr;
         _syncStateTrigger(stateAbbr);
-        const cs = document.getElementById('countySelect');
-        cs.innerHTML = '<option value="">— Select County —</option>';
         _syncCountyTrigger('');
+        // Load counties so the dropdown remains interactive after state zoom
+        loadCounties(true);
         navigateToState(stateAbbr);
       }
       // clicks on .sg-count or header background do nothing
@@ -1504,13 +1504,15 @@ function restoreZones() {
   try {
     const data = DB.loadZones();
     if (!data || !Array.isArray(data) || !data.length) return;
-    data.forEach(d => _loadZone(d));
+    // 1.2 — skipLayers=true: restore zone data + labels but don't draw polygon fills/outlines
+    // Polygon layers appear only after user actively selects a county
+    data.forEach(d => _loadZone(d, true));
     _rebuildAllLabels();
     showToast(`Restored ${data.length} zone${data.length>1?'s':''}`, 'success');
     setTimeout(() => _loadAllCountyBoundaries(true), 500); // 1.2 — cache only on restore
   } catch(e) { console.error('restoreZones error:', e); }
 }
-function _loadZone(d) {
+function _loadZone(d, skipLayers) {
   const poly = { id:d.id, name:d.name, letter:d.letter||'', stateAbbr:d.stateAbbr||'', countyName:d.countyName||'',
     color:d.color, points:d.points, description:d.description||'', pricingTiers:d.pricingTiers||[], labelMarker:null, handles:[], _isRect:d.isRect||false, _bounds:d.bounds||null };
   // Back-compat: derive stateAbbr/countyName from name if missing
@@ -1520,7 +1522,7 @@ function _loadZone(d) {
     else { const m2 = poly.name.match(/^(.+),\s*([A-Z]{2})$/); if(m2){poly.countyName=m2[1];poly.stateAbbr=m2[2];} }
   }
   polygons.push(poly);
-  _addZoneLayers(poly);
+  if (!skipLayers) _addZoneLayers(poly); // 1.2 — skip polygon fill/line on page restore
   _addZoneLabel(poly);
   return poly;
 }
@@ -2264,6 +2266,9 @@ async function loadCounty() {
   // 1.1 — Always clear state boundary when a county is selected
   if (map.getLayer('state-boundary-line')) map.removeLayer('state-boundary-line');
   if (map.getSource('state-boundary')) map.removeSource('state-boundary');
+  // 1.2 — Ensure zone polygon layers are drawn when user actively selects a county
+  // (they are skipped on page restore; this is the first chance to draw them)
+  _restoreAllZoneLayers();
   showToast('Loading county boundary...', 'info');
   try {
     const fips = STATE_FIPS[abbr];
