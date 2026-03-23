@@ -716,7 +716,7 @@ function closeZoneEditor() {
 
 // -- Fetch live spreadsheet name from Google Sheets API --
 async function _fetchSheetName(sheetId) {
-  // Only updates the modal's read-only sheet name field — never the sidebar
+  // Fetches live spreadsheet title and updates sheetConfig + modal connected box
   try {
     const r = await fetch('/.netlify/functions/sheets-read', {
       method: 'POST',
@@ -725,8 +725,21 @@ async function _fetchSheetName(sheetId) {
     });
     const data = await r.json();
     const name = data.spreadsheetTitle || data.sheetTitle || '';
-    const el = document.getElementById('smSheetNameField');
-    if (el) { el.value = name; }
+    if (!name) return;
+    // Update the stored config so renames persist across sessions
+    const sa = document.getElementById('stateSelect').value;
+    const cn = document.getElementById('countySelect').value;
+    if (sa && cn) {
+      const cfg = _getSheetConfig(sa, cn);
+      if (cfg && cfg.sheetId === sheetId) {
+        cfg.sheetTitle = name;
+        _setSheetConfig(sa, cn, cfg);
+        if (sheetConfig && sheetConfig.sheetId === sheetId) sheetConfig.sheetTitle = name;
+      }
+    }
+    // Update the connected status box title if modal is open
+    const titleEl = document.getElementById('smStatusTitle');
+    if (titleEl) titleEl.textContent = name;
   } catch(e) {}
 }
 
@@ -1125,8 +1138,8 @@ function renderPolygonList() {
 
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
-    const _stateZoneTip = totalZones === 1 ? `1 zone in \${fullName}` : `\${totalZones} zones in \${fullName}`;
-    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tip-wrap" style="flex:1;min-width:0;"><span class="sg-name">\${fullName}</span><span class="tip-box tip-sidebar" style="right:auto;left:8px;">Zoom map into \${fullName}</span></span><span class="tip-wrap"><span class="sg-count" style="pointer-events:none;">\${totalZones}</span><span class="tip-box tip-sidebar">\${_stateZoneTip}</span></span>`;
+    const _stateZoneTip = totalZones === 1 ? `1 zone in ${fullName}` : `${totalZones} zones in ${fullName}`;
+    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tip-wrap" style="flex:1;min-width:0;"><span class="sg-name">${fullName}</span><span class="tip-box tip-sidebar" style="right:auto;left:8px;">Zoom map into ${fullName}</span></span><span class="tip-wrap"><span class="sg-count" style="pointer-events:none;">${totalZones}</span><span class="tip-box tip-sidebar">${_stateZoneTip}</span></span>`;
     hdr.onclick = e => {
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
@@ -1742,7 +1755,9 @@ function openSheetsModal() {
   // 5.2 — status box + URL field visibility
   const lastUrl = existing && existing.sheetUrl ? existing.sheetUrl : '';
   if (existing && existing.sheetId) {
-    _smSetConnected(true, existing.sheetTitle || '', existing.sheetId, lastUrl);
+    _smSetConnected(true, existing.sheetTitle || existing.sheetId, existing.sheetId, lastUrl);
+    // Refresh title in background — picks up renames since last connect
+    setTimeout(() => _fetchSheetName(existing.sheetId), 150);
   } else {
     _smSetConnected(false, '', '', lastUrl);
   }
