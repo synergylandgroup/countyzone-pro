@@ -1952,14 +1952,20 @@ function disconnectSheetForCounty(stateAbbr, countyName, evt) {
 }
 
 async function connectSheets() {
-  const rawInput = document.getElementById('sheetId').value.trim();
-  if (!rawInput) { showToast('Please enter a Google Sheets URL or ID', 'error'); return; }
-  // 5.2 — accept full URL or raw ID
-  const sheetId = _parseSheetId(rawInput);
-  if (!sheetId) { showToast('Could not parse a Sheet ID from that URL', 'error'); return; }
   const sa = document.getElementById('stateSelect').value;
   const cn = document.getElementById('countySelect').value;
   if (!sa || !cn) { showToast('Please select a State and County first', 'error'); return; }
+
+  // When already connected, the URL field is hidden — fall back to the saved sheetId
+  const activeCfg = _getSheetConfig(sa, cn) || sheetConfig;
+  const urlField  = document.getElementById('sheetId');
+  const rawInput  = urlField.value.trim() || (activeCfg && activeCfg.sheetUrl) || (activeCfg && activeCfg.sheetId) || '';
+  if (!rawInput) { showToast('Please enter a Google Sheets URL or ID', 'error'); return; }
+
+  // 5.2 — accept full URL or raw ID
+  const sheetId = _parseSheetId(rawInput);
+  if (!sheetId) { showToast('Could not parse a Sheet ID from that URL', 'error'); return; }
+
   // Check if this sheet ID is already used by a different county
   const existingKey = Object.entries(sheetConfigs).find(([key, cfg]) => {
     return cfg.sheetId === sheetId && key !== _countyKey(sa, cn);
