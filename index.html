@@ -462,6 +462,21 @@
   </div>
 </div>
 
+<!-- Boundary Validation Modal -->
+<div class="modal-overlay" id="boundaryModal">
+  <div class="modal" style="text-align:center;max-width:480px;width:90%">
+    <span class="confirm-icon" id="boundaryModalIcon">🚫</span>
+    <div class="confirm-title" id="boundaryModalTitle"></div>
+    <div class="confirm-sub" id="boundaryModalSub" style="margin-bottom:12px"></div>
+    <div id="boundaryModalListWrap" style="text-align:left;background:var(--bg2,#f7f7f7);border:1px solid var(--border);border-radius:6px;max-height:220px;overflow-y:auto;padding:10px 12px;margin-bottom:18px;font-size:12px;font-family:monospace;white-space:pre;user-select:text"></div>
+    <div class="modal-actions" style="justify-content:center;margin-top:0;gap:10px">
+      <button class="btn btn-ghost" id="boundaryModalCancelBtn" style="display:none">Cancel Import</button>
+      <button class="btn" id="boundaryModalProceedBtn" style="display:none;background:var(--accent);color:#fff;border:none">Proceed Anyway</button>
+      <button class="btn btn-ghost" id="boundaryModalDismissBtn">Dismiss</button>
+    </div>
+  </div>
+</div>
+
 <!-- Google Sheets Modal -->
 <div class="modal-overlay" id="sheetsModal">
   <div class="modal">

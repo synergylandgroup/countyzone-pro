@@ -884,6 +884,110 @@ function _checkAcreageOverlaps(rows) {
   return conflicts;
 }
 
+// =========================================================
+// COUNTY BOUNDARY VALIDATION
+// =========================================================
+async function _validatePropertiesInCounty(props, fips, countyName) {
+  // Reuse cached GeoJSON if available, else fetch
+  const key = `${fips}|${countyName}`;
+  let geojson = (_countyGeoJSONCache && _countyGeoJSONCache[key]) || null;
+  if (!geojson) {
+    try { geojson = await _fetchCountyGeoJSON(fips, countyName); }
+    catch(e) { return null; } // network failure — skip validation
+  }
+  if (!geojson || !geojson.features || !geojson.features.length) return null;
+
+  // Extract all polygon rings from GeoJSON features
+  const rings = [];
+  geojson.features.forEach(f => {
+    const g = f.geometry;
+    if (!g) return;
+    if (g.type === 'Polygon') {
+      g.coordinates.forEach(ring => rings.push(ring));
+    } else if (g.type === 'MultiPolygon') {
+      g.coordinates.forEach(poly => poly.forEach(ring => rings.push(ring)));
+    }
+  });
+  if (!rings.length) return null;
+
+  // GeoJSON rings are [lng, lat] — convert for pointInPolygon which takes (lat, lng, pts as [lng,lat])
+  const inAnyRing = (lat, lng) => rings.some(ring => pointInPolygon(lat, lng, ring));
+
+  const outsideProps = [];
+  props.forEach(prop => {
+    if (!inAnyRing(prop.lat, prop.lng)) {
+      outsideProps.push({ apn: prop.apn || '(no APN)', lat: prop.lat, lng: prop.lng });
+    }
+  });
+
+  // Always log to console for inspection
+  if (outsideProps.length) {
+    console.group(`[LandValuator] ${outsideProps.length} properties outside ${countyName} County boundary`);
+    console.table(outsideProps);
+    console.groupEnd();
+  }
+
+  return { outsideProps, total: props.length };
+}
+
+function _showBoundaryModal({ title, sub, icon = '🚫', outsideProps, onProceed = null }) {
+  document.getElementById('boundaryModalIcon').textContent = icon;
+  document.getElementById('boundaryModalTitle').textContent = title;
+  document.getElementById('boundaryModalSub').textContent = sub;
+
+  // Build copyable APN / lat / lng list
+  const listEl = document.getElementById('boundaryModalListWrap');
+  const header = 'APN                          Latitude       Longitude';
+  const divider = '─'.repeat(55);
+  const rows = outsideProps.map(p => {
+    const apn = (p.apn || '').padEnd(30);
+    const lat = String(p.lat).padEnd(15);
+    const lng = String(p.lng);
+    return `${apn}${lat}${lng}`;
+  }).join('\n');
+  listEl.textContent = `${header}\n${divider}\n${rows}`;
+
+  const cancelBtn   = document.getElementById('boundaryModalCancelBtn');
+  const proceedBtn  = document.getElementById('boundaryModalProceedBtn');
+  const dismissBtn  = document.getElementById('boundaryModalDismissBtn');
+
+  if (onProceed) {
+    // Warning mode — show Proceed Anyway + Cancel
+    cancelBtn.style.display  = '';
+    proceedBtn.style.display = '';
+    dismissBtn.style.display = 'none';
+  } else {
+    // Block mode — dismiss only
+    cancelBtn.style.display  = 'none';
+    proceedBtn.style.display = 'none';
+    dismissBtn.style.display = '';
+  }
+
+  // Wire buttons (clone to remove stale listeners)
+  const newProceed = proceedBtn.cloneNode(true);
+  const newCancel  = cancelBtn.cloneNode(true);
+  const newDismiss = dismissBtn.cloneNode(true);
+  proceedBtn.replaceWith(newProceed);
+  cancelBtn.replaceWith(newCancel);
+  dismissBtn.replaceWith(newDismiss);
+
+  const close = () => document.getElementById('boundaryModal').classList.remove('open');
+
+  if (onProceed) {
+    document.getElementById('boundaryModalProceedBtn').addEventListener('click', () => { close(); onProceed(); });
+    document.getElementById('boundaryModalCancelBtn').addEventListener('click', close);
+  } else {
+    document.getElementById('boundaryModalDismissBtn').addEventListener('click', close);
+  }
+
+  // Overlay click closes
+  document.getElementById('boundaryModal').addEventListener('click', function _oc(e) {
+    if (e.target === e.currentTarget) { close(); this.removeEventListener('click', _oc); }
+  });
+
+  document.getElementById('boundaryModal').classList.add('open');
+}
+
 function _showOverlapError(conflicts) {
   // Highlight conflicting rows in red
   const rows = document.querySelectorAll('#zeTbody tr');
@@ -1915,37 +2019,81 @@ async function connectSheets() {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
     loadPropertiesFromFunction(data.properties, cn, data.scrubbedApns);
-    setConnected(true);
+    const _sheetTitle = data.spreadsheetTitle || data.sheetTitle || sheetId;
 
-    // 5.2 — store sheet title and update modal connected state
-    const sheetTitle = data.spreadsheetTitle || data.sheetTitle || sheetId;
-    sheetConfig.sheetTitle = sheetTitle;
-    _setSheetConfig(sa, cn, sheetConfig);
-    _smSetConnected(true, sheetTitle, sheetId, rawInput);
-
-    // Auto-assign to existing zones immediately
-    const _cnNorm = cn.toLowerCase().trim();
-    const countyPolys = polygons.filter(p => p.stateAbbr === sa && (p.countyName||'').toLowerCase().trim() === _cnNorm);
-    if (countyPolys.length && properties.length) {
-      let assigned = 0;
-      properties.forEach(prop => {
-        prop.zone = null;
-        for (const poly of countyPolys) {
-          if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
-            prop.zone = poly.letter;
-            assigned++;
-            break;
-          }
+    // 5.3 — County boundary validation
+    const _fips = STATE_FIPS[sa];
+    const _validResult = _fips ? await _validatePropertiesInCounty(properties, _fips, cn) : null;
+    if (_validResult) {
+      const { outsideProps, total } = _validResult;
+      const pct = total > 0 ? outsideProps.length / total : 0;
+      if (outsideProps.length > 0) {
+        const countMsg = `${outsideProps.length} of ${total} propert${outsideProps.length === 1 ? 'y' : 'ies'}`;
+        if (pct > 0.01) {
+          // Block import
+          _showBoundaryModal({
+            title: `Import Blocked — ${countMsg} outside ${cn} County`,
+            sub: 'Resolve the properties below before connecting. Select and copy the list for review.',
+            icon: '🚫',
+            outsideProps,
+          });
+          // Roll back — clear properties and connected state
+          properties.forEach(p => { if (p.marker) p.marker.remove(); });
+          properties = [];
+          document.getElementById('statProps').textContent = '0';
+          return;
+        } else {
+          // Warn but allow
+          _showBoundaryModal({
+            title: `Warning — ${countMsg} outside ${cn} County`,
+            sub: `Less than 1% of properties fall outside the county boundary. You may proceed or cancel to investigate.`,
+            icon: '⚠️',
+            outsideProps,
+            onProceed: () => {
+              _finishSheetConnect({ sa, cn, sheetConfig, sheetId, rawInput, sheetTitle: _sheetTitle });
+            },
+          });
+          return; // pause here — _finishSheetConnect called on Proceed
         }
-      });
-      document.getElementById('statAssigned').textContent = assigned;
-      renderPolygonList();
-      persistZones();
+      }
     }
 
-    const _assigned = properties.filter(p => p.zone).length;
-    showToast('Connected: ' + cn + ' County — ' + properties.length + ' properties, ' + _assigned + ' assigned', 'success');
+    _finishSheetConnect({ sa, cn, sheetConfig, sheetId, rawInput, sheetTitle: _sheetTitle });
+
   } catch(e) { showToast('Connection failed: ' + e.message, 'error'); }
+}
+
+function _finishSheetConnect({ sa, cn, sheetConfig, sheetId, rawInput, sheetTitle }) {
+  setConnected(true);
+
+  // Store sheet title and update modal connected state
+  sheetTitle = sheetTitle || sheetId;
+  sheetConfig.sheetTitle = sheetTitle;
+  _setSheetConfig(sa, cn, sheetConfig);
+  _smSetConnected(true, sheetTitle, sheetId, rawInput);
+
+  // Auto-assign to existing zones immediately
+  const _cnNorm = cn.toLowerCase().trim();
+  const countyPolys = polygons.filter(p => p.stateAbbr === sa && (p.countyName||'').toLowerCase().trim() === _cnNorm);
+  if (countyPolys.length && properties.length) {
+    let assigned = 0;
+    properties.forEach(prop => {
+      prop.zone = null;
+      for (const poly of countyPolys) {
+        if (pointInPolygon(prop.lat, prop.lng, poly.points)) {
+          prop.zone = poly.letter;
+          assigned++;
+          break;
+        }
+      }
+    });
+    document.getElementById('statAssigned').textContent = assigned;
+    renderPolygonList();
+    persistZones();
+  }
+
+  const _assigned = properties.filter(p => p.zone).length;
+  showToast('Connected: ' + cn + ' County — ' + properties.length + ' properties, ' + _assigned + ' assigned', 'success');
 }
 function loadPropertiesFromFunction(props, countyOverride, scrubbedApns) {
   properties.forEach(p => { if (p.marker) p.marker.remove(); });
