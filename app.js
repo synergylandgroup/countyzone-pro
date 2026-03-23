@@ -408,7 +408,8 @@ function _initPinLayer() {
         : '';
 
       const html = `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:190px;max-width:220px">
+        <style>.mapboxgl-popup-content{background:#ffffff!important;border-radius:10px!important;padding:12px 14px!important;box-shadow:0 4px 20px rgba(0,0,0,0.18)!important;border:1px solid #dde1e9!important;}.mapboxgl-popup-tip{border-top-color:#ffffff!important;}</style>
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:190px;max-width:220px;background:#ffffff;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <span style="font-size:12px;font-weight:700;color:#1a2332">${p.apn || '—'}</span>
             <span style="font-size:10px;font-weight:700;background:#edf2f8;color:#2c5282;border-radius:4px;padding:2px 6px">${zoneLabel}</span>
