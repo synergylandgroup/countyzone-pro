@@ -72,7 +72,7 @@ exports.handler = async (event) => {
         zip:     get(row, colIndex['ZIP']),
         county:  get(row, countyColIndex),
         acreage:     get(row, colIndex['Acreage']),
-        liAcreage:   get(row, colIndex['LI Calculated Acreage']),
+        liAcreage:   get(row, colIndex['Calculated Acreage']),
         parcelLink:  get(row, colIndex['Parcel Link']),
         zone:        get(row, colIndex['County Zone']),
       });
