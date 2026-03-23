@@ -2685,6 +2685,14 @@ map.on('load', () => {
   const _urlCounty   = (_urlParams.get('county') || '').trim();
   const _hasDeepLink = !!(_urlState && _urlCounty);
 
+  // Strip ?state and ?county from the address bar immediately so a page refresh returns to default view
+  if (_hasDeepLink) {
+    _urlParams.delete('state');
+    _urlParams.delete('county');
+    const _cleanSearch = _urlParams.toString();
+    history.replaceState(null, '', window.location.pathname + (_cleanSearch ? '?' + _cleanSearch : ''));
+  }
+
   // Restore state/county dropdowns and reconnect sheet
   // Deep-link params override persisted state if present
   const appState = loadAppState();
