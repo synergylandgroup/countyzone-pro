@@ -1,5 +1,6 @@
 // netlify/functions/sheets-write-zones.js
-// Writes zone letters back to "County Zone" column in "LI Raw Dataset"
+// Writes zone letters back to "County Zone" column in "Scrubbed and Priced"
+// Resolves row positions by APN lookup — rowIndex from LI Raw Dataset does not apply here
 
 exports.handler = async (event) => {
   const headers = {
@@ -12,28 +13,51 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
-    const { sheetId, sheetName = 'Scrubbed and Priced', assignments } = JSON.parse(event.body || '{}');
+    const { sheetId, sheetName = 'Scrubbed and Priced', assignments, colAPN = 'APN' } = JSON.parse(event.body || '{}');
     if (!sheetId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'sheetId required' }) };
     if (!assignments || !assignments.length) return { statusCode: 400, headers, body: JSON.stringify({ error: 'assignments required' }) };
 
     const token = await getAccessToken();
 
-    // Find County Zone column by header name
-    const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName + '!1:1')}`;
-    const headerRes = await fetch(headerUrl, { headers: { Authorization: `Bearer ${token}` } });
-    if (!headerRes.ok) throw new Error(`Sheets API ${headerRes.status}: ${await headerRes.text()}`);
-    const headerData = await headerRes.json();
-    const headerRow = (headerData.values || [[]])[0] || [];
+    // Fetch full Scrubbed and Priced tab to build APN→row map and find County Zone column
+    const tabUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}`;
+    const tabRes = await fetch(tabUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!tabRes.ok) throw new Error(`Sheets API ${tabRes.status}: ${await tabRes.text()}`);
+    const tabData = await tabRes.json();
+    const allRows = tabData.values || [];
+    if (allRows.length < 1) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Scrubbed and Priced tab is empty' }) };
+
+    const headerRow = allRows[0];
+    const apnColIndex  = headerRow.findIndex(h => h && h.trim() === colAPN);
     const zoneColIndex = headerRow.findIndex(h => h && h.trim() === 'County Zone');
-    if (zoneColIndex === -1) return { statusCode: 400, headers, body: JSON.stringify({ error: '"County Zone" column not found' }) };
+    if (apnColIndex  === -1) return { statusCode: 400, headers, body: JSON.stringify({ error: `"${colAPN}" column not found in Scrubbed and Priced` }) };
+    if (zoneColIndex === -1) return { statusCode: 400, headers, body: JSON.stringify({ error: '"County Zone" column not found in Scrubbed and Priced' }) };
+
+    // Build APN → sheet row number map (1-indexed, row 1 = header)
+    const apnToRow = {};
+    allRows.slice(1).forEach((row, i) => {
+      const apn = (row[apnColIndex] || '').trim();
+      if (apn) apnToRow[apn.toLowerCase()] = i + 2; // +1 for 0-index, +1 for header row
+    });
 
     const zoneColLetter = colToLetter(zoneColIndex);
 
-    // Batch update
-    const data = assignments.map(({ rowIndex, zone }) => ({
-      range: `${sheetName}!${zoneColLetter}${rowIndex}`,
-      values: [[zone.toUpperCase()]],
-    }));
+    // Resolve each assignment to its actual row in Scrubbed and Priced
+    const data = [];
+    const unmatched = [];
+    assignments.forEach(({ apn, zone }) => {
+      if (!apn) return;
+      const rowNum = apnToRow[apn.trim().toLowerCase()];
+      if (!rowNum) { unmatched.push(apn); return; }
+      data.push({
+        range: `${sheetName}!${zoneColLetter}${rowNum}`,
+        values: [[zone.toUpperCase()]],
+      });
+    });
+
+    if (!data.length) {
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, updated: 0, unmatched }) };
+    }
 
     const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`;
     const writeRes = await fetch(writeUrl, {
@@ -43,7 +67,7 @@ exports.handler = async (event) => {
     });
     if (!writeRes.ok) throw new Error(`Sheets API ${writeRes.status}: ${await writeRes.text()}`);
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, updated: assignments.length }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, updated: data.length, unmatched }) };
   } catch (err) {
     console.error('sheets-write-zones error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
