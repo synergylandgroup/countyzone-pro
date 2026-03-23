@@ -171,6 +171,7 @@ let _countyGeoJSONCache = {};
 let drawMode = null;
 let polyState = 'idle';
 let drawPoints = [];
+let _lastEscapeTime = 0;
 
 // Zone desc modal
 let _editingDescId = null;
@@ -591,6 +592,18 @@ function cancelDraw() {
   document.getElementById('drawHint').style.display = 'none';
 }
 
+function undoLastDrawPoint() {
+  if (!drawPoints.length) { cancelDraw(); return; }
+  drawPoints.pop();
+  if (!drawPoints.length) {
+    cancelDraw();
+    return;
+  }
+  _refreshPolyPreviews(null);
+  const hint = document.getElementById('drawHint');
+  if (hint) hint.textContent = `📍 ${drawPoints.length} point${drawPoints.length !== 1 ? 's' : ''} — Esc to undo, double-Esc to cancel`;
+}
+
 function startDraw() {
   cancelDraw();
   drawMode = 'polygon'; polyState = 'drawing';
@@ -599,7 +612,7 @@ function startDraw() {
   document.getElementById('btnCancel').style.display = 'block';
   const hint = document.getElementById('drawHint');
   hint.style.display = 'block';
-  hint.textContent = '📍 Click to add vertices — click first point to close';
+  hint.textContent = '📍 Click to add vertices — Esc to undo, double-Esc to cancel, click first point to close';
 }
 
 map.on('click', function(e) {
@@ -2373,6 +2386,23 @@ function _toggleDropdown(which) {
 }
 
 // Keyboard navigation for open dropdown
+// Escape key — undo last draw point (single) or cancel draw (double-tap)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (drawMode !== 'polygon' || polyState !== 'drawing') return;
+  e.preventDefault();
+  e.stopPropagation();
+  const now = Date.now();
+  const isDoubleTap = (now - _lastEscapeTime) < 350;
+  _lastEscapeTime = now;
+  if (isDoubleTap) {
+    cancelDraw();
+    showToast('Draw cancelled', 'info');
+  } else {
+    undoLastDrawPoint();
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   if (!_dropActiveWhich) return;
   const listId = _dropActiveWhich === 'state' ? 'stateList' : 'countyList';
