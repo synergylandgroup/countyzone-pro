@@ -1139,7 +1139,7 @@ function renderPolygonList() {
     const hdr = document.createElement('div');
     hdr.className = 'state-header' + (isStateOpen ? ' open' : '');
     const _stateZoneTip = totalZones === 1 ? `1 zone in ${fullName}` : `${totalZones} zones in ${fullName}`;
-    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tip-wrap" style="flex:1;min-width:0;"><span class="sg-name">${fullName}</span><span class="tip-box tip-sidebar" style="right:auto;left:8px;">Zoom map into ${fullName}</span></span><span class="tip-wrap"><span class="sg-count" style="pointer-events:none;">${totalZones}</span><span class="tip-box tip-sidebar" style="right:0;left:auto;transform:none;">${_stateZoneTip}</span></span>`;
+    hdr.innerHTML = `<span class="state-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tip-wrap" style="flex:1;min-width:0;"><span class="sg-name">${fullName}</span><span class="tip-box tip-sidebar">Zoom map into ${fullName}</span></span><span class="tip-wrap"><span class="sg-count" style="pointer-events:none;">${totalZones}</span><span class="tip-box tip-sidebar" style="right:0;left:auto;transform:none;">${_stateZoneTip}</span></span>`;
     hdr.onclick = e => {
       if (e.target.closest('.state-arrow-zone')) {
         const isOpen = hdr.classList.toggle('open');
