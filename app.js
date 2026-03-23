@@ -946,13 +946,13 @@ async function saveAndSyncZone() {
       const pr = await fetch('/.netlify/functions/sheets-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset' }),
+        body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset', colCounty: cfg.colCounty || 'County', colAPN: cfg.colAPN || 'APN' }),
       });
       const pd = await pr.json();
       if (pd.properties && pd.properties.length) {
         // Pass county explicitly so filter uses captured cn, not live dropdown
-        loadPropertiesFromFunction(pd.properties, cn);
-        document.getElementById('statProps').textContent = pd.properties.length;
+        loadPropertiesFromFunction(pd.properties, cn, pd.scrubbedApns);
+        document.getElementById('statProps').textContent = properties.length;
       }
     } catch(e) { console.warn('Could not prefetch properties:', e); }
   }
@@ -993,7 +993,7 @@ async function saveAndSyncZone() {
       const zr = await fetch('/.netlify/functions/sheets-write-zones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset', assignments }),
+        body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: 'Scrubbed and Priced', assignments }),
       });
       const zd = await zr.json();
       if (!zr.ok) throw new Error(zd.error || 'Zone write failed');
@@ -1910,11 +1910,11 @@ async function connectSheets() {
     const r = await fetch('/.netlify/functions/sheets-read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sheetId: sheetConfig.sheetId, sheetName: sheetConfig.sheetName }),
+      body: JSON.stringify({ sheetId: sheetConfig.sheetId, sheetName: sheetConfig.sheetName, colCounty: sheetConfig.colCounty || 'County', colAPN: sheetConfig.colAPN || 'APN' }),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status);
-    loadPropertiesFromFunction(data.properties, cn);
+    loadPropertiesFromFunction(data.properties, cn, data.scrubbedApns);
     setConnected(true);
 
     // 5.2 — store sheet title and update modal connected state
@@ -1947,10 +1947,16 @@ async function connectSheets() {
     showToast('Connected: ' + cn + ' County — ' + properties.length + ' properties, ' + _assigned + ' assigned', 'success');
   } catch(e) { showToast('Connection failed: ' + e.message, 'error'); }
 }
-function loadPropertiesFromFunction(props, countyOverride) {
+function loadPropertiesFromFunction(props, countyOverride, scrubbedApns) {
   properties.forEach(p => { if (p.marker) p.marker.remove(); });
   properties = [];
   let skipped = 0;
+
+  // Build APN whitelist set if provided
+  const apnWhitelist = (scrubbedApns && scrubbedApns.length)
+    ? new Set(scrubbedApns.map(a => a.trim().toLowerCase()))
+    : null;
+
   props.forEach(prop => {
     let { lat, lng, apn, address, city, state, zip, county, acreage, zone, rowIndex } = prop;
 
@@ -1975,11 +1981,16 @@ function loadPropertiesFromFunction(props, countyOverride) {
       if (propCounty !== selCounty) { skipped++; return; }
     }
 
+    // APN whitelist filter — only retain properties present in Scrubbed and Priced
+    if (apnWhitelist && apn) {
+      if (!apnWhitelist.has(apn.trim().toLowerCase())) { skipped++; return; }
+    }
+
     // Store property data without map marker (pins disabled pending better implementation)
     properties.push({ lat, lng, apn, address, city, state, zip, county, acreage, zone: zone || null, rowIndex, marker: null });
   });
   document.getElementById('statProps').textContent = properties.length;
-  if (skipped) showToast(`${skipped} properties skipped — coordinates out of range`, 'info');
+  if (skipped) showToast(`${skipped} properties skipped — coordinates out of range or not in scrubbed list`, 'info');
 }
 
 // =========================================================
@@ -2033,7 +2044,7 @@ async function runAssignment() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sheetId:   activeCfg.sheetId,
-          sheetName: activeCfg.sheetName || 'LI Raw Dataset',
+          sheetName: 'Scrubbed and Priced',
           assignments,
         }),
       });
@@ -2565,7 +2576,7 @@ map.on('load', () => {
                 const r = await fetch('/.netlify/functions/sheets-read', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset' }),
+                  body: JSON.stringify({ sheetId: cfg.sheetId, sheetName: cfg.sheetName || 'LI Raw Dataset', colCounty: cfg.colCounty || 'County', colAPN: cfg.colAPN || 'APN' }),
                 });
                 const data = await r.json();
                 if (!data.properties || !data.properties.length) continue;
@@ -2574,7 +2585,7 @@ map.on('load', () => {
                 const _cnNorm = _cn.toLowerCase().trim();
                 const isCurrentCounty = _sa === appState.state && _cnNorm === (appState.county||'').toLowerCase().trim();
                 if (isCurrentCounty || !properties.length) {
-                  loadPropertiesFromFunction(data.properties, _cn);
+                  loadPropertiesFromFunction(data.properties, _cn, data.scrubbedApns);
                   document.getElementById('statProps').textContent = properties.length;
                   if (isCurrentCounty) {
                     sheetConfig = cfg;
