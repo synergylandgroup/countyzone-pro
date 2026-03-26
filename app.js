@@ -489,7 +489,7 @@ function _removeZoneLayers(id) {
   if (map.getLayer(_lineId(id))) map.removeLayer(_lineId(id));
   if (map.getSource(_srcId(id))) map.removeSource(_srcId(id));
 }
-function _restoreAllZoneLayers() { polygons.forEach(p => _addZoneLayers(p)); }
+function _restoreAllZoneLayers() { polygons.forEach(p => { if (!p._isUnassigned) _addZoneLayers(p); }); }
 
 // =========================================================
 // ZONE LABELS
@@ -794,7 +794,7 @@ function _finishPolygon() {
   const cn = document.getElementById('countySelect').value;
   const _cnNorm = (cn || '').toLowerCase().trim();
   const existingPolys = polygons.filter(p =>
-    p.stateAbbr === sa && (p.countyName || '').toLowerCase().trim() === _cnNorm && p.points && p.points.length >= 3
+    p.stateAbbr === sa && (p.countyName || '').toLowerCase().trim() === _cnNorm && p.points && p.points.length >= 3 && !p._isUnassigned
   );
   if (existingPolys.length) {
     // Sample a grid of ~25 interior points from the new polygon's bounding box
@@ -835,7 +835,7 @@ function _finishPolygon() {
 // =========================================================
 function _nextLetterForCounty(stateAbbr, countyName) {
   const used = new Set(
-    polygons.filter(p => p.stateAbbr === stateAbbr && p.countyName === countyName).map(p => p.letter).filter(Boolean)
+    polygons.filter(p => p.stateAbbr === stateAbbr && p.countyName === countyName && !p._isUnassigned).map(p => p.letter).filter(Boolean)
   );
   for (let i = 0; i < 26; i++) {
     const l = String.fromCharCode(65 + i);
@@ -882,7 +882,7 @@ function openZoneEditor(polyId) {
   _editingDescId = polyId;
 
   // Header
-  document.getElementById('zeBadge').textContent = `ZONE ${p.letter} PRICING PANEL`;
+  document.getElementById('zeBadge').textContent = p._isUnassigned ? 'UNASSIGNED PRICING PANEL' : `ZONE ${p.letter} PRICING PANEL`;
   document.getElementById('zeTitle').textContent = p.name;
   // zeAllZones checkbox removed from UI
 
@@ -1198,7 +1198,7 @@ async function saveAndSyncZone() {
   try {
     // 2. Run zone assignment — scoped to THIS county's polygons only (case-insensitive)
     const _cnNorm = cn.toLowerCase().trim();
-    const countyPolygons = polygons.filter(poly => poly.stateAbbr === sa && (poly.countyName||'').toLowerCase().trim() === _cnNorm);
+    const countyPolygons = polygons.filter(poly => poly.stateAbbr === sa && (poly.countyName||'').toLowerCase().trim() === _cnNorm && !poly._isUnassigned);
     const assignments = [];
     let assigned = 0;
     properties.forEach(prop => {
@@ -1235,7 +1235,7 @@ async function saveAndSyncZone() {
     }
 
     // 4. Sync all pricing tiers
-    const countyPolys = polygons.filter(poly => !poly.stateAbbr || (poly.stateAbbr === sa && poly.countyName === cn));
+    const countyPolys = polygons.filter(poly => (!poly.stateAbbr || (poly.stateAbbr === sa && poly.countyName === cn)) && !poly._isUnassigned);
     const allTiers = [];
     countyPolys.slice().sort((a,b) => (a.letter||'').localeCompare(b.letter||'')).forEach(poly => {
       (poly.pricingTiers || [])
@@ -1381,8 +1381,9 @@ document.getElementById('zoneEditorModal').addEventListener('click', e => { if (
 // RENDER POLYGON LIST — Full State Name → County hierarchy
 // =========================================================
 function renderPolygonList() {
-  document.getElementById('zoneCount').textContent = polygons.length;
-  document.getElementById('statPolygons').textContent = polygons.length;
+  const _realPolyCount = polygons.filter(p => !p._isUnassigned).length;
+  document.getElementById('zoneCount').textContent = _realPolyCount;
+  document.getElementById('statPolygons').textContent = _realPolyCount;
   const stateSet = new Set(polygons.map(p => p.stateAbbr).filter(Boolean));
   document.getElementById('statStates').textContent = stateSet.size;
 
@@ -1467,15 +1468,24 @@ function renderPolygonList() {
         <div class="county-header-pill${isCountyOpen ? ' open' : ''}">
           <span class="county-arrow-zone"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2L8 6L4 10" stroke="#a8bcd4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="county-name-text">${countyName} County</span>
-          <span class="county-zone-pill">${cPolys.reduce((s,z) => s + (z.propCount||0), 0)}</span>
+          <span class="county-zone-pill" id="cpill-${stateAbbr}-${countyName.replace(/\s+/g,'_')}">—</span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="openSheetsModalForCounty('${stateAbbr}','${CSS.escape(countyName)}',event)">${sheetIconSVG}</button><span class="tip-box tip-sidebar">${sheetIconTooltip}</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="shareCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button><span class="tip-box tip-sidebar">Copy link to open ${countyName} County in LandValuator.</span></span>
           <span class="tip-wrap"><button class="county-action-btn sheet-icon-btn" onclick="deleteCounty('${stateAbbr}','${CSS.escape(countyName)}',event)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b7d95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button><span class="tip-box tip-sidebar">Delete saved zones in ${countyName} County</span></span>
         </div>
       `;
       // Wire fixed tooltips for county name and count badge
-      const _cnPropTotal = cPolys.reduce((s,z) => s + (z.propCount||0), 0);
+      const _unassignedCountForTip = properties.filter(p => {
+        const pc = (p.county||'').toLowerCase().replace(' county','').trim();
+        const cc = countyName.toLowerCase().trim();
+        const sc = (p.state||'').toUpperCase();
+        return (pc === cc && sc === stateAbbr) && !p.zone;
+      }).length;
+      const _cnPropTotal = cPolys.reduce((s,z) => s + (z.propCount||0), 0) + _unassignedCountForTip;
       const _cnZoneTip = _cnPropTotal + ' propert' + (_cnPropTotal === 1 ? 'y' : 'ies') + ' in ' + countyName + ' County';
+      // Update county pill now that total is computed
+      const _pillEl2 = cHdr.querySelector('.county-zone-pill');
+      if (_pillEl2) _pillEl2.textContent = _cnPropTotal;
       const _cnNameEl = cHdr.querySelector('.county-name-text');
       const _cnPillEl = cHdr.querySelector('.county-zone-pill');
       if (_cnNameEl) { _cnNameEl.addEventListener('mouseenter', e => _ftip.show('Zoom map into ' + countyName + ' County', e.currentTarget)); _cnNameEl.addEventListener('mouseleave', () => _ftip.hide()); }
@@ -1508,10 +1518,10 @@ function renderPolygonList() {
         div.innerHTML = `
           <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
           <div class="poly-info">
-            <div class="poly-name" style="display:flex;align-items:center;gap:6px">ZONE ${p.letter}<span class="zone-prop-count">${p.propCount||0}</span></div>
+            <div class="poly-name">ZONE ${p.letter}</div>
             <div class="poly-count">${p.countyName ? p.countyName+' County, '+p.stateAbbr : ''}</div>
           </div>
-          <span class="tip-wrap"><span class="zone-prop-pill-tip" style="cursor:default"></span><span class="tip-box tip-sidebar">${p.propCount||0} propert${(p.propCount||0)===1?'y':'ies'} assigned to Zone ${p.letter}</span></span><span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">⚙</button><span class="tip-box tip-sidebar">Open pricing panel for Zone ${p.letter}</span></span>
+          <span class="tip-wrap"><span class="zone-prop-count tip-anchor" style="cursor:default">${p.propCount||0}</span><span class="tip-box tip-sidebar">${p.propCount||0} propert${(p.propCount||0)===1?'y':'ies'} assigned to Zone ${p.letter}</span></span><span class="tip-wrap"><button class="poly-btn notes-btn" onclick="openZoneDescModal('${p.id}')">⚙</button><span class="tip-box tip-sidebar">Open pricing panel for Zone ${p.letter}</span></span>
           <span class="tip-wrap"><button class="poly-btn delete-btn">✕</button><span class="tip-box tip-sidebar">Delete Zone ${p.letter}</span></span>
         `;
         div.querySelector('.notes-btn').addEventListener('click', e => { e.stopPropagation(); openZoneDescModal(p.id); });
@@ -1528,16 +1538,43 @@ function renderPolygonList() {
         return (pc === cc && sc === stateAbbr) && !p.zone;
       }).length;
       if (_unassignedCount > 0) {
+        // Get or create a virtual polygon for unassigned properties pricing
+        const _uId = `__unassigned__${stateAbbr}|${countyName}`;
+        let _uPoly = polygons.find(p => p.id === _uId);
+        if (!_uPoly) {
+          _uPoly = {
+            id: _uId, letter: '?', name: 'Unassigned', color: '#a0aec0',
+            stateAbbr, countyName, points: [], propCount: _unassignedCount,
+            pricingTiers: [], description: '', _isUnassigned: true,
+          };
+          polygons.push(_uPoly);
+        } else {
+          _uPoly.propCount = _unassignedCount;
+        }
+
         const uDiv = document.createElement('div');
         uDiv.className = 'polygon-item';
-        uDiv.style.cssText = 'opacity:0.75;border-style:dashed;cursor:default;';
+        uDiv.style.cssText = 'border-style:dashed;';
         uDiv.innerHTML = `
           <div style="width:10px;height:10px;border-radius:50%;background:#a0aec0;flex-shrink:0;border:2px dashed #718096"></div>
           <div class="poly-info">
-            <div class="poly-name" style="display:flex;align-items:center;gap:6px;color:#718096">UNASSIGNED<span class="zone-prop-count" style="background:#e8ebef;color:#718096">${_unassignedCount}</span></div>
+            <div class="poly-name" style="color:#718096">UNASSIGNED</div>
             <div class="poly-count">${countyName} County, ${stateAbbr}</div>
           </div>
+          <span class="tip-wrap"><span class="zone-prop-count tip-anchor" style="background:#e8ebef;color:#718096;cursor:default">${_unassignedCount}</span><span class="tip-box tip-sidebar">${_unassignedCount} unassigned propert${_unassignedCount===1?'y':'ies'} in ${countyName} County</span></span>
+          <span class="tip-wrap"><button class="poly-btn notes-btn" data-uid="${_uId}">⚙</button><span class="tip-box tip-sidebar">Open pricing panel for Unassigned properties</span></span>
+          <span class="tip-wrap"><button class="poly-btn delete-btn" data-uid="${_uId}">✕</button><span class="tip-box tip-sidebar">Remove Unassigned pricing data</span></span>
         `;
+        uDiv.querySelector('.notes-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          const up = polygons.find(p => p.id === _uId);
+          if (up) openZoneEditor(_uId);
+        });
+        uDiv.querySelector('.delete-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = polygons.findIndex(p => p.id === _uId);
+          if (idx !== -1) { polygons.splice(idx, 1); persistZones(); renderPolygonList(); }
+        });
         polyDiv.appendChild(uDiv);
       }
 
@@ -1869,7 +1906,7 @@ function _polyToJSON(p) {
            color:p.color, points:p.points, description:p.description||'', pricingTiers:p.pricingTiers||[], isRect:!!p._isRect, bounds:p._bounds||null };
 }
 function persistZones() {
-  DB.saveZones(polygons.map(_polyToJSON));
+  DB.saveZones(polygons.filter(p => !p._isUnassigned).map(_polyToJSON));
 }
 async function _loadAllCountyBoundaries(cacheOnly) {
   // Find all unique state+county combos that have zones
@@ -2233,7 +2270,7 @@ function _finishSheetConnect({ sa, cn, sheetConfig, sheetId, rawInput, sheetTitl
 
   // Auto-assign to existing zones immediately
   const _cnNorm = cn.toLowerCase().trim();
-  const countyPolys = polygons.filter(p => p.stateAbbr === sa && (p.countyName||'').toLowerCase().trim() === _cnNorm);
+  const countyPolys = polygons.filter(p => p.stateAbbr === sa && (p.countyName||'').toLowerCase().trim() === _cnNorm && !p._isUnassigned);
   if (countyPolys.length && properties.length) {
     let assigned = 0;
     properties.forEach(prop => {
