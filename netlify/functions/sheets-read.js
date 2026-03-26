@@ -80,6 +80,7 @@ exports.handler = async (event) => {
 
     // --- Scrubbed and Priced: extract APN whitelist ---
     let scrubbedApns = [];
+    let ownerMap = {};
     if (scrubbedRes.ok) {
       const scrubbedData = await scrubbedRes.json();
       const sRows = scrubbedData.values || [];
@@ -87,16 +88,23 @@ exports.handler = async (event) => {
         const sHeader = sRows[0];
         const sColIndex = {};
         sHeader.forEach((h, i) => { if (h) sColIndex[h.trim()] = i; });
-        const sApnCol = sColIndex[colAPN] !== undefined ? sColIndex[colAPN] : sColIndex['APN'];
+        const sApnCol   = sColIndex[colAPN] !== undefined ? sColIndex[colAPN] : sColIndex['APN'];
+        const sOwnerCol = sColIndex['Owner Name(s)'];
         if (sApnCol !== undefined) {
-          scrubbedApns = sRows.slice(1)
-            .map(row => (row[sApnCol] || '').trim())
-            .filter(Boolean);
+          sRows.slice(1).forEach(row => {
+            const apn = (row[sApnCol] || '').trim();
+            if (!apn) return;
+            scrubbedApns.push(apn);
+            if (sOwnerCol !== undefined) {
+              const owner = (row[sOwnerCol] || '').trim();
+              if (owner) ownerMap[apn.toLowerCase()] = owner;
+            }
+          });
         }
       }
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify({ spreadsheetTitle, properties, totalRows: dataRows.length, scrubbedApns }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ spreadsheetTitle, properties, totalRows: dataRows.length, scrubbedApns, ownerMap }) };
   } catch (err) {
     console.error('sheets-read error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
