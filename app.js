@@ -681,6 +681,18 @@ function _refreshLabelMode() {
   polygons.forEach(p => {
     if (p.labelMarker) p.labelMarker.getElement().style.display = zoomed ? '' : 'none';
   });
+
+  // County boundaries: show when zoomed in, hide when zoomed out
+  // Exception: active (selected) county always stays visible at any zoom
+  const activeSA = (document.getElementById('stateSelect') || {}).value || '';
+  const activeCN = (document.getElementById('countySelect') || {}).value || '';
+  const activeKey = _countyKey(activeSA, activeCN);
+  Object.entries(_countyLayers).forEach(([key, sid]) => {
+    const visible = zoomed || key === activeKey;
+    const vis = visible ? 'visible' : 'none';
+    if (map.getLayer(sid+'-fill')) map.setLayoutProperty(sid+'-fill', 'visibility', vis);
+    if (map.getLayer(sid+'-line')) map.setLayoutProperty(sid+'-line', 'visibility', vis);
+  });
 }
 
 // Full rebuild — call after any polygon add/remove
