@@ -682,6 +682,15 @@ function _refreshLabelMode() {
     if (p.labelMarker) p.labelMarker.getElement().style.display = zoomed ? '' : 'none';
   });
 
+  // Zone fill/line layers: visible when zoomed in only
+  polygons.forEach(p => {
+    if (p._isUnassigned) return;
+    const fid = _fillId(p.id), lid = _lineId(p.id);
+    const vis = zoomed ? 'visible' : 'none';
+    if (map.getLayer(fid)) map.setLayoutProperty(fid, 'visibility', vis);
+    if (map.getLayer(lid)) map.setLayoutProperty(lid, 'visibility', vis);
+  });
+
   // County boundaries: show when zoomed in, hide when zoomed out
   // Exception: active (selected) county always stays visible at any zoom
   const activeSA = (document.getElementById('stateSelect') || {}).value || '';
@@ -1977,7 +1986,8 @@ function restoreZones() {
     data.forEach(d => _loadZone(d, true));
     _rebuildAllLabels();
     showToast(`Restored ${data.length} zone${data.length>1?'s':''}`, 'success');
-    setTimeout(() => _loadAllCountyBoundaries(true), 500); // 1.2 — cache only on restore
+    _restoreAllZoneLayers(); // draw zone fill/lines so _refreshLabelMode can toggle them
+    setTimeout(() => _loadAllCountyBoundaries(false), 500); // draw county boundaries, visibility controlled by zoom
   } catch(e) { console.error('restoreZones error:', e); }
 
   // Restore unassigned virtual polygons (pricing data only, no map geometry)
@@ -2763,8 +2773,9 @@ function _addCountyBoundaryForKey(key, geojson) {
   const sid = 'county-' + key.replace(/[^a-zA-Z0-9]/g,'-') + '-' + Date.now();
   _countyLayers[key] = sid;
   map.addSource(sid, { type:'geojson', data:geojson });
-  map.addLayer({ id:sid+'-fill', type:'fill', source:sid, paint:{'fill-color':'#000000','fill-opacity':0.08} });
-  map.addLayer({ id:sid+'-line', type:'line', source:sid, paint:{'line-color':'#6600cc','line-width':3} });
+  const _initVis = map.getZoom() >= COUNTY_PILL_ZOOM ? 'visible' : 'none';
+  map.addLayer({ id:sid+'-fill', type:'fill', source:sid, paint:{'fill-color':'#000000','fill-opacity':0.08}, layout:{'visibility':_initVis} });
+  map.addLayer({ id:sid+'-line', type:'line', source:sid, paint:{'line-color':'#6600cc','line-width':3}, layout:{'visibility':_initVis} });
   // Click on county fill area (when no zone layer is on top)
   map.on('click', sid+'-fill', async (e) => {
     if (drawMode === 'polygon') return;
