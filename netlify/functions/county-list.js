@@ -13,8 +13,9 @@ exports.handler = async (event) => {
 
   try {
     // Try Census Bureau API
+    const apiKey = process.env.CENSUS_API_KEY ? `&key=${process.env.CENSUS_API_KEY}` : '';
     const res = await fetch(
-      `https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${fips}`,
+      `https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${fips}${apiKey}`,
       { headers: { 'User-Agent': 'LandValuator/1.0' } }
     );
     if (!res.ok) throw new Error(`Census API ${res.status}: ${await res.text()}`);
